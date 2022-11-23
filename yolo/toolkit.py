@@ -3,7 +3,7 @@ import time
 
 import cv2
 import d3dshot  # pip install git+https://github.com/fauskanger/D3DShot#egg=D3DShot
-import mss  # pip install mss
+import mss as pymss  # pip install mss
 import numpy as np
 import torch
 from win32api import GetSystemMetrics  # conda install pywin32
@@ -19,38 +19,7 @@ from utils.plots import plot_one_box
 from utils.torch_utils import select_device, load_classifier, time_synchronized, TracedModel
 
 
-dxgi = d3dshot.create(capture_output="numpy")
-# dxgi = None
-sct = mss.mss()
-
-
-class Monitor:
-
-    @staticmethod
-    def resolution():
-        """
-        显示分辨率
-        """
-        w = GetSystemMetrics(SM_CXSCREEN)
-        h = GetSystemMetrics(SM_CYSCREEN)
-        return w, h
-
-    @staticmethod
-    def center():
-        """
-        屏幕中心点
-        """
-        w, h = Monitor.resolution()
-        return w // 2, h // 2
-
-    @staticmethod
-    def mss(region):
-        """
-        region: tuple, (left, top, width, height)
-        pip install mss
-        """
-        left, top, width, height = region
-        return sct.grab(monitor={'left': left, 'top': top, 'width': width, 'height': height})
+class Capturer:
 
     @staticmethod
     def win(region):
@@ -77,51 +46,135 @@ class Monitor:
         return img
 
     @staticmethod
-    def d3d(region=None):
+    def mss(instance, region):
         """
+        region: tuple, (left, top, width, height)
+        pip install mss
+        """
+        left, top, width, height = region
+        return instance.grab(monitor={'left': left, 'top': top, 'width': width, 'height': height})
+
+    @staticmethod
+    def d3d(instance, region=None):
+        """
+        DXGI 普通模式
         region: tuple, (left, top, width, height)
         因为 D3DShot 在 Python 3.9 里会和 pillow 版本冲突, 所以使用大佬修复过的版本来替代
         pip install git+https://github.com/fauskanger/D3DShot#egg=D3DShot
         """
         if region:
             left, top, width, height = region
-            return dxgi.screenshot((left, top, left + width, top + height))
+            return instance.screenshot((left, top, left + width, top + height))
         else:
-            return dxgi.screenshot()
+            return instance.screenshot()
 
     @staticmethod
-    def grab(region=None, mss=False, win=False, d3d=False, convert=False):
+    def d3d_latest_frame(instance):
         """
-        region: tuple, (left, top, width, height)
+        DXGI 缓存帧模式
+        """
+        return instance.get_latest_frame()
+
+    @staticmethod
+    def instance(mss=False, d3d=False, buffer=False, frame_buffer_size=60, target_fps=60, region=None):
+        if mss:
+            return pymss.mss()
+        elif d3d:
+            """
+            buffer: 是否使用缓存帧模式
+                否: 适用于 dxgi.screenshot
+                是: 适用于 dxgi.get_latest_frame, 需传入 frame_buffer_size, target_fps, region
+            """
+            if not buffer:
+                return d3dshot.create(capture_output="numpy")
+            else:
+                dxgi = d3dshot.create(capture_output="numpy", frame_buffer_size=frame_buffer_size)
+                left, top, width, height = region
+                dxgi.capture(target_fps=target_fps, region=(left, top, left + width, top + height))  # region: left, top, right, bottom, 需要适配入参为 left, top, width, height 格式的 region
+                return dxgi
+
+    @staticmethod
+    def grab(win=False, mss=False, d3d=False, instance=None, region=None, buffer=False, convert=False):
+        """
+        win:
+            region: tuple, (left, top, width, height)
+        mss:
+            instance: mss instance
+            region: tuple, (left, top, width, height)
+        d3d:
+            buffer: 是否为缓存帧模式
+                否: 需要 region
+                是: 不需要 region
+            instance: d3d instance, 区分是否为缓存帧模式
+            region: tuple, (left, top, width, height), 区分是否为缓存帧模式
         convert: 是否转换为 opencv 需要的 numpy BGR 格式, 转换结果可直接用于 opencv
         """
         # 补全范围
-        if not region:
+        if (win or mss or (d3d and not buffer)) and not region:
             w, h = Monitor.resolution()
             region = 0, 0, w, h
         # 范围截图
-        img = None
-        if mss:
-            img = Monitor.mss(region)
-        elif win:
-            img = Monitor.win(region)
+        if win:
+            img = Capturer.win(region)
+        elif mss:
+            img = Capturer.mss(instance, region)
         elif d3d:
-            img = Monitor.d3d(region)
-        if img is None:
-            img = Monitor.mss(region)
-            mss = True
+            if not buffer:
+                img = Capturer.d3d(instance, region)
+            else:
+                img = Capturer.d3d_latest_frame(instance)
+        else:
+            img = Capturer.win(region)
+            win = True
         # 图片转换
         if convert:
-            if mss:
-                img = cv2.cvtColor(np.array(img), cv2.COLOR_BGRA2BGR)
-            elif win:
+            if win:
                 img = cv2.cvtColor(img, cv2.COLOR_BGRA2BGR)
+            elif mss:
+                img = cv2.cvtColor(np.array(img), cv2.COLOR_BGRA2BGR)
             elif d3d:
-                img = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)  # 截图原本就是3通道的, opencv 可以直接显示, 只需要 np.ascontiguousarray(img) 处理就可以了
+                img = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
         return img
 
 
-class KalmanFilter:
+class Monitor:
+
+    @staticmethod
+    def resolution():
+        """
+        显示分辨率
+        """
+        w = GetSystemMetrics(SM_CXSCREEN)
+        h = GetSystemMetrics(SM_CYSCREEN)
+        return w, h
+
+    @staticmethod
+    def center():
+        """
+        屏幕中心点
+        """
+        w, h = Monitor.resolution()
+        return w // 2, h // 2
+
+
+class Timer:
+
+    @staticmethod
+    def cost(interval):
+        """
+        转换耗时, 输入纳秒间距, 转换为合适的单位
+        """
+        if interval < 1000:
+            return f'{interval}ns'
+        elif interval < 1_000_000:
+            return f'{round(interval / 1000, 3)}us'
+        elif interval < 1_000_000_000:
+            return f'{round(interval / 1_000_000, 3)}ms'
+        else:
+            return f'{round(interval / 1_000_000_000, 3)}s'
+
+
+class Predictor:
 
     kf = cv2.KalmanFilter(4, 2)
     kf.measurementMatrix = np.array([[1, 0, 0, 0], [0, 1, 0, 0]], np.float32)
@@ -176,7 +229,7 @@ class Detector:
         # 截图和转换
         t1 = time.perf_counter_ns()
         # 此 IMG 经过了转化, 和 cv2.read 读到的格式是一样的
-        img0 = Monitor.grab(region, convert=True)
+        img0 = Capturer.grab(win=True, region=region, convert=True)
         t2 = time.perf_counter_ns()
         # 检测
         aims = []
@@ -221,13 +274,13 @@ class Detector:
                 gx = int((xyxy[0] + xyxy[2]) / 2)
                 gy = int((xyxy[1] + xyxy[3]) / 2)
                 # confidence 置信度
-                aims.append((clazz, conf, (sx, sy), (gx, gy), (sl, st, sw, sh), (gl, gt, gw, gh)))
+                aims.append((clazz, float(conf), (sx, sy), (gx, gy), (sl, st, sw, sh), (gl, gt, gw, gh)))
                 if image:
                     label2 = (f'{clazz} {conf:.2f}' if confidence else f'{clazz}') if label else None
                     plot_one_box(xyxy, im0, label=label2, color=self.colors[int(cls)], line_thickness=3)
         t3 = time.perf_counter_ns()
-        print(f'截图:{t2 - t1}ns, {round((t2 - t1) / 1000000)}ms, 检测:{round((t3 - t2) / 1000000)}ms, 总计:{round((t3 - t1) / 1000000)}ms, 数量:{len(aims)}/{len(det)}')
-        return (aims, img0) if image else aims
+        print(f'截图:{Timer.cost(t2 - t1)}, 检测:{Timer.cost(t3 - t2)}, 总计:{Timer.cost(t3 - t1)}, 数量:{len(aims)}/{len(det)}')
+        return aims, img0 if image else None
 
     def label(self, path):
         img0 = cv2.imread(path)
