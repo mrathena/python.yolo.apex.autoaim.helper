@@ -279,7 +279,7 @@ class Detector:
                     label2 = (f'{clazz} {conf:.2f}' if confidence else f'{clazz}') if label else None
                     plot_one_box(xyxy, im0, label=label2, color=self.colors[int(cls)], line_thickness=3)
         t3 = time.perf_counter_ns()
-        print(f'截图:{Timer.cost(t2 - t1)}, 检测:{Timer.cost(t3 - t2)}, 总计:{Timer.cost(t3 - t1)}, 数量:{len(aims)}/{len(det)}')
+        # print(f'截图:{Timer.cost(t2 - t1)}, 检测:{Timer.cost(t3 - t2)}, 总计:{Timer.cost(t3 - t1)}, 数量:{len(aims)}/{len(det)}')
         return aims, img0 if image else None
 
     def label(self, path):
