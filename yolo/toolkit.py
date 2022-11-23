@@ -1,6 +1,5 @@
 import os
 import time
-
 import cv2
 import d3dshot  # pip install git+https://github.com/fauskanger/D3DShot#egg=D3DShot
 import mss as pymss  # pip install mss
