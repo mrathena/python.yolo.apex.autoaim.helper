@@ -4,11 +4,6 @@ import cv2
 from win32con import HWND_TOPMOST, SWP_NOMOVE, SWP_NOSIZE
 from win32gui import FindWindow, SetWindowPos
 
-import os
-print(os.getcwd())
-os.chdir("./yolo")
-print(os.getcwd())
-
 from yolo.toolkit import Detector, Timer
 
 region = (3440 // 7 * 3, 1440 // 3, 3440 // 7, 1440 // 3)
