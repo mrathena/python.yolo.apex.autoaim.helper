@@ -290,7 +290,7 @@ class Detector:
                     annotator.circle((cx, cy), 1, colors(6, True), 2)
                     """
         t3 = time.perf_counter_ns()
-        # print(f'截图:{Timer.cost(t2 - t1)}, 检测:{Timer.cost(t3 - t2)}, 总计:{Timer.cost(t3 - t1)}, 数量:{len(aims)}/{len(det)}')
+        print(f'截图:{Timer.cost(t2 - t1)}, 检测:{Timer.cost(t3 - t2)}, 总计:{Timer.cost(t3 - t1)}, 数量:{len(aims)}/{len(det)}')
         return aims, annotator.result() if image else None
 
     def label(self, path):

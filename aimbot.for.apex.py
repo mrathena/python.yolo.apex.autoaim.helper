@@ -277,7 +277,7 @@ def consumer(data, queue):
                     # px = int(pidx(ax))
                     px = int(ax)
                     py = int(ay)
-                    print(f'移动像素:{x},{y}, ADS:{ax},{ay}, PID:{(px, py)}')
+                    # print(f'移动像素:{x},{y}, ADS:{ax},{ay}, PID:{(px, py)}')
                     move(px, py)
         # 检测显示开关
         if data[box]:
