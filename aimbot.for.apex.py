@@ -32,13 +32,13 @@ horizontal = 'horizontal'
 confidence = 'confidence'
 simulation = 'simulation'
 init = {
-    ads: 1,  # 移动倍数, 调整方式: 将 horizontal 和 vertical 先设置为 1, 开启自瞄后, 不断瞄准目标旁边并按住 F 键, 当准星移动稳定且精准快速不振荡时, 就找到了合适的 ADS 值
+    ads: 1.5,  # 移动倍数, 调整方式: 将 horizontal 和 vertical 先设置为 1, 开启自瞄后, 不断瞄准目标旁边并按住 F 键, 当准星移动稳定且精准快速不振荡时, 就找到了合适的 ADS 值
     horizontal: 0.25,  # 水平方向的额外 ADS, 该类值小一点有利于防止被别人识破 AI
     vertical: 0.5,  # 垂直方向的额外 ADS, 该类值小一点有利于防止被别人识破 AI
     radius: 100,  # 瞄准生效半径, 目标瞄点出现在以准星为圆心该值为半径的圆的范围内时才会自动瞄准
     weights: 'model.for.apex.dummy.engine',  # 权重文件
     confidence: 0.5,  # 置信度, 低于该值的认为是干扰
-    size: 640,  # 截图的尺寸, 屏幕中心 size*size 大小
+    size: 400,  # 截图的尺寸, 屏幕中心 size*size 大小
     center: None,  # 屏幕中心点
     region: None,  # 截图范围
     end: False,  # 退出标记, End
