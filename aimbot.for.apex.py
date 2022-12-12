@@ -36,7 +36,7 @@ init = {
     horizontal: 0.25,  # 水平方向的额外 ADS, 该类值小一点有利于防止被别人识破 AI
     vertical: 0.5,  # 垂直方向的额外 ADS, 该类值小一点有利于防止被别人识破 AI
     radius: 100,  # 瞄准生效半径, 目标瞄点出现在以准星为圆心该值为半径的圆的范围内时才会自动瞄准
-    weights: 'model.for.apex.engine',  # 权重文件
+    weights: 'model.for.apex.engine',  # 权重文件 model.for.apex.engine model.for.apex.dummy.engine
     confidence: 0.5,  # 置信度, 低于该值的认为是干扰
     size: 400,  # 截图的尺寸, 屏幕中心 size*size 大小
     center: None,  # 屏幕中心点
