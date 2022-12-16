@@ -115,9 +115,11 @@ def keyboard(data):
 
 
 def producer(data, queue):
+
     from toolkit import Detector, Timer
     detector = Detector(data[weights])
     winsound.Beep(800, 200)
+
     while True:
         if data[end]:
             break
