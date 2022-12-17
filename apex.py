@@ -124,6 +124,7 @@ def producer(data, queue):
     winsound.Beep(800, 200)
 
     while True:
+
         if data[end]:
             break
         if data[box] or data[aim]:
