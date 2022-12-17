@@ -20,7 +20,7 @@
 - train.*: 训练工具, 用于训练模型
 - export.*: 将 .pt 导出为 .engine
 
-参数说明: aimbot.for.apex.py 中的 init
+参数说明: apex.py 中的 init
 - ads: 就是一个作用于鼠标移动距离的倍数, 用于调整移动鼠标时的实际像素和鼠标 eDPI 的关系. 
   - 开启自瞄后, 不断瞄准目标旁边并按住 F 键, 当准星移动稳定且精准快速不振荡时, 就找到了合适的 ADS 值
 - classes: --
