@@ -128,9 +128,11 @@ def c(data, qi):  # 截图进程
         if data[box] or data[aim]:
             begin = time.perf_counter_ns()
             img = Capturer.grab(win=True, region=data[region], convert=True)
+            print(f'截图: {Timer.cost(time.perf_counter_ns() - begin)}')
             try:
+                begin = time.perf_counter_ns()
                 qi.put(img, block=True, timeout=1)
-                print(f'截图: {Timer.cost(time.perf_counter_ns() - begin)}')
+                print(f'送图: {Timer.cost(time.perf_counter_ns() - begin)}')
             except Exception as e:
                 print(f'Capturer Process Exception, {e}')
 
@@ -143,22 +145,26 @@ def d(data, qi, qa):  # 检测进程
         if data[end]:
             break
         if data[box] or data[aim]:
-            begin = time.perf_counter_ns()
             # 获取截图
             img = None
             try:
+                begin = time.perf_counter_ns()
                 img = qi.get(block=True, timeout=1)
+                print(f'收图: {Timer.cost(time.perf_counter_ns() - begin)}')
             except Exception as e:
                 print(f'Detector Process Exception, {e}')
             if img is None:
                 continue
             # 检测目标
+            begin = time.perf_counter_ns()
             aims, img = detector.detect(img=img, region=data[region], classes=heads.union(bodies), image=data[box], label=False)
             if data[box]:
                 cv2.putText(img, f'{Timer.cost(time.perf_counter_ns() - begin)}', (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.75, (255, 255, 255), 1)
+            print(f'检测: {Timer.cost(time.perf_counter_ns() - begin)}')
             try:
+                begin = time.perf_counter_ns()
                 qa.put((aims, img), block=True, timeout=1)
-                print(f'检测: {Timer.cost(time.perf_counter_ns() - begin)}')
+                print(f'送数: {Timer.cost(time.perf_counter_ns() - begin)}')
             except Exception as e:
                 print(f'Detector Process Exception, {e}')
 
@@ -226,7 +232,6 @@ def a(data, qa):  # 瞄准进程
 
     last = None
     while True:
-        begin = time.perf_counter_ns()
         if data[end]:
             cv2.destroyAllWindows()
             break
@@ -234,11 +239,14 @@ def a(data, qa):  # 瞄准进程
             continue
         product = None
         try:
+            begin = time.perf_counter_ns()
             product = qa.get(block=True, timeout=1)
+            print(f'收数: {Timer.cost(time.perf_counter_ns() - begin)}')
         except Exception as e:
             print(f'Aim Process Exception, {e}')
         if not product:
             continue
+        begin = time.perf_counter_ns()
         aims, img = product
         targets = []
         for clazz, conf, sc, gc, sr, gr in aims:
