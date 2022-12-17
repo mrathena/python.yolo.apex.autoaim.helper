@@ -180,12 +180,12 @@ def consumer(data, queue):
         if last is None:
             lx, ly = data[center]
         else:
-            _, lsc, _, _ = last
+            lsc, _ = last
             lx, ly = lsc
         index = 0
         minimum = 0
         for i, item in enumerate(targets):
-            _, sc, _, _ = item
+            sc, _ = item
             sx, sy = sc
             distance = (sx - lx) ** 2 + (sy - ly) ** 2
             if minimum == 0:
@@ -226,15 +226,15 @@ def consumer(data, queue):
             _, _, _, height = sr
             if data[head]:
                 # 两种方式, 1:拿到Head框, 2:从Body框里推测Head的位置
-                # if clazz in heads:
-                #     targets.append((height, sc, gc, gr))
-                if clazz in bodies:
+                if clazz in heads:
+                    targets.append((sc, gr))
+                elif clazz in bodies:
                     cx, cy = sc
-                    targets.append((height, (cx, cy - (height // 2 - height // 8)), gc, gr))
+                    targets.append(((cx, cy - (height // 2 - height // 8)), gr))
             else:
                 if clazz in bodies:
                     cx, cy = sc
-                    targets.append((height, (cx, cy - (height // 2 - height // 3)), gc, gr))  # 检测身体的时候, 因为中心位置不太好, 所以对应往上调一点
+                    targets.append(((cx, cy - (height // 2 - height // 3)), gr))  # 检测身体的时候, 因为中心位置不太好, 所以对应往上调一点
         target = None
         predicted = None
         if len(targets) != 0:
@@ -245,7 +245,7 @@ def consumer(data, queue):
             last = target
             # 解析目标里的信息
             if target:
-                _, sc, _, gr = target
+                sc, gr = target
                 predicted = predictor.predict(sc)  # 目标预测点
                 # 计算移动距离, 展示预瞄位置
                 if data[box]:
@@ -262,7 +262,7 @@ def consumer(data, queue):
         # 检测瞄准开关
         if data[aim] and data[lock]:
             if target:
-                _, sc, _, _ = target
+                sc, _ = target
                 if inner(sc):
                     # 计算要移动的像素
                     cx, cy = data[center]  # 准星所在点(屏幕中心)
