@@ -271,9 +271,9 @@ def consumer(data, queue):
                     else:
                         x = sx - cx
                         y = sy - cy
-                    temp = -1 if x >= 0 else 1
                     ax = int(x * data[ads] * (data[horizontal] if data[simulation] else 1))
                     # if data[simulation]:
+                    #     temp = -1 if x >= 0 else 1
                     #     ax = (random.randint(0, 8) * temp) if random.random() <= 0.1 else ax
                     ay = int(y * data[ads] * (data[vertical] if data[simulation] else 1))
                     # px = int(pidx(ax))
