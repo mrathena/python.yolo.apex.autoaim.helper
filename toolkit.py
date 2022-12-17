@@ -14,7 +14,7 @@ from models.common import DetectMultiBackend
 from utils.augmentations import letterbox
 from utils.general import non_max_suppression, scale_coords, xyxy2xywh, check_img_size
 from utils.plots import Annotator, colors
-from utils.torch_utils import select_device
+from utils.torch_utils import select_device, smart_inference_mode
 
 
 class Capturer:
@@ -141,6 +141,7 @@ class Predictor:
 
 class Detector:
 
+    @smart_inference_mode()
     def __init__(self, weights):
         self.weights = weights
         self.source = 'data/images'  # file/dir/URL/glob, 0 for webcam
@@ -178,6 +179,7 @@ class Detector:
         bs = 1
         self.model.warmup(imgsz=(1 if self.pt else bs, 3, *self.imgsz))  # warmup
 
+    @smart_inference_mode()
     def detect(self, region, classes=None, image=False, label=True, confidence=True):
         # 截图和转换
         t1 = time.perf_counter_ns()
@@ -244,6 +246,7 @@ class Detector:
         print(f'截图:{Timer.cost(t2 - t1)}, 检测:{Timer.cost(t3 - t2)}, 总计:{Timer.cost(t3 - t1)}, 数量:{len(aims)}/{len(det)}')
         return aims, annotator.result() if image else None
 
+    @smart_inference_mode()
     def label(self, path):
         img0 = cv2.imread(path)
         im = letterbox(img0, self.imgsz, stride=self.stride, auto=self.pt)[0]
