@@ -8,9 +8,9 @@
 因为 CSDN 部分规则原因, CSDN 文章将不能再更新, 如果后续代码有优化, 只会在 GitHub 同步
 
 源码说明:
-- aimbot.for.apex.py: 主文件, 自瞄逻辑与程序控制都在这里
+- apex.py: 主文件, 自瞄逻辑与程序控制都在这里
 - toolkit.py: 自行封装的工具, 封装了截图推理等工具
-- aimbot.for.apex.dummy.fov.py: 使用 FOV 的主文件, 已放弃 FOV, 感觉没啥用, 一个倍数完全可以代替
+- apex.fov.py: 使用 FOV 的主文件, 已放弃 FOV, 感觉没啥用, 一个倍数完全可以代替
 - weights.*.pt: 训练好的模型权重文件, 大概训练了下, 识别不一定精准
 - logitech.driver.dll: 大佬封装的调用罗技驱动的库文件
 - logitech.test.py: 用于测试罗技驱动安装配置是否正确
