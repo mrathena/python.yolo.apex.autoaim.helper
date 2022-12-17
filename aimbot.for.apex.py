@@ -27,9 +27,10 @@ weights = 'weights'
 predict = 'predict'
 vertical = 'vertical'
 timestamp = 'timestamp'
+emulation = 'emulation'
 horizontal = 'horizontal'
 confidence = 'confidence'
-simulation = 'simulation'
+randomness = 'randomness'
 init = {
     ads: 1,  # 移动倍数, 调整方式: 将 horizontal 和 vertical 先设置为 1, 开启自瞄后, 不断瞄准目标旁边并按住 F 键, 当准星移动稳定且精准快速不振荡时, 就找到了合适的 ADS 值
     horizontal: 0.25,  # 水平方向的额外 ADS, 该类值小一点有利于防止被别人识破 AI
@@ -48,7 +49,8 @@ init = {
     timestamp: None,  # 开火时间
     head: False,  # 是否瞄头, Right
     predict: False,  # 是否预瞄, Left
-    simulation: True,  # 是否仿真(减小力度加随机值), PageDown
+    emulation: True,  # 是否仿真(减小力度加随机值), PageDown
+    randomness: False,  # 仿真时是否随机左右偏移, PageUp
 }
 
 
@@ -105,8 +107,11 @@ def keyboard(data):
             data[head] = not data[head]
             winsound.Beep(800 if data[head] else 400, 200)
         elif key == pynput.keyboard.Key.page_down:
-            data[simulation] = not data[simulation]
-            winsound.Beep(800 if data[simulation] else 400, 200)
+            data[emulation] = not data[emulation]
+            winsound.Beep(800 if data[emulation] else 400, 200)
+        elif key == pynput.keyboard.Key.page_up:
+            data[randomness] = not data[randomness]
+            winsound.Beep(800 if data[randomness] else 400, 200)
 
     with pynput.keyboard.Listener(on_release=release, on_press=press) as k:
         k.join()
@@ -269,11 +274,11 @@ def consumer(data, queue):
                     else:
                         x = sx - cx
                         y = sy - cy
-                    ax = int(x * data[ads] * (data[horizontal] if data[simulation] else 1))
-                    # if data[simulation]:
-                    #     temp = -1 if x >= 0 else 1
-                    #     ax = (random.randint(0, 8) * temp) if random.random() <= 0.1 else ax
-                    ay = int(y * data[ads] * (data[vertical] if data[simulation] else 1))
+                    ax = int(x * data[ads] * (data[horizontal] if data[emulation] else 1))
+                    if data[emulation] and data[randomness]:
+                        temp = -1 if x >= 0 else 1
+                        ax = (random.randint(0, 8) * temp) if random.random() <= 0.2 else ax
+                    ay = int(y * data[ads] * (data[vertical] if data[emulation] else 1))
                     # px = int(pidx(ax))
                     px = int(ax)
                     py = int(ay)
