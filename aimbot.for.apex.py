@@ -15,9 +15,8 @@ end = 'end'
 box = 'box'
 aim = 'aim'
 show = 'show'
-view = 'view'
-fire = 'fire'
 head = 'head'
+lock = 'lock'
 size = 'size'
 heads = {'head', '1'}
 bodies = {'body', '0'}
@@ -36,7 +35,7 @@ init = {
     horizontal: 0.25,  # 水平方向的额外 ADS, 该类值小一点有利于防止被别人识破 AI
     vertical: 0.5,  # 垂直方向的额外 ADS, 该类值小一点有利于防止被别人识破 AI
     radius: 100,  # 瞄准生效半径, 目标瞄点出现在以准星为圆心该值为半径的圆的范围内时才会自动瞄准
-    weights: 'weights.for.apex.engine',  # 权重文件 weights.for.apex.engine weights.for.apex.dummy.engine
+    weights: 'weights.for.apex.dummy.engine',  # 权重文件 weights.for.apex.engine weights.for.apex.dummy.engine
     confidence: 0.5,  # 置信度, 低于该值的认为是干扰
     size: 400,  # 截图的尺寸, 屏幕中心 size*size 大小
     center: None,  # 屏幕中心点
@@ -45,9 +44,8 @@ init = {
     box: False,  # 显示开关, Up
     show: False,  # 显示状态
     aim: False,  # 瞄准开关, Down, X2(侧上键)
-    fire: False,  # 开火状态
+    lock: False,  # 锁定状态(开火/预瞄)
     timestamp: None,  # 开火时间
-    view: False,  # 预瞄状态, F, 手枪狙击枪可提前预瞄一下
     head: False,  # 是否瞄头, Right
     predict: False,  # 是否预瞄, Left
     simulation: True,  # 是否仿真(减小力度加随机值), PageDown
@@ -64,7 +62,7 @@ def mouse(data):
         if not game():
             return
         if button == pynput.mouse.Button.left:
-            data[fire] = pressed
+            data[lock] = pressed
             if pressed:
                 data[timestamp] = time.time_ns()
         elif button == pynput.mouse.Button.x2:
@@ -82,7 +80,7 @@ def keyboard(data):
         if not game():
             return
         if key == pynput.keyboard.KeyCode.from_char('f'):
-            data[view] = True
+            data[lock] = True
 
     def release(key):
         if key == pynput.keyboard.Key.end:
@@ -93,7 +91,7 @@ def keyboard(data):
         if not game():
             return
         if key == pynput.keyboard.KeyCode.from_char('f'):
-            data[view] = False
+            data[lock] = False
         elif key == pynput.keyboard.Key.up:
             data[box] = not data[box]
             winsound.Beep(800 if data[box] else 400, 200)
@@ -257,7 +255,7 @@ def consumer(data, queue):
                     py2 = py1 + gh
                     cv2.rectangle(img, (px1, py1), (px2, py2), (0, 256, 0), 2)
         # 检测瞄准开关
-        if data[aim] and (data[view] or data[fire]):
+        if data[aim] and data[lock]:
             if target:
                 _, sc, _, _ = target
                 if inner(sc):
