@@ -32,7 +32,7 @@ horizontal = 'horizontal'
 confidence = 'confidence'
 randomness = 'randomness'
 init = {
-    ads: 1,  # 移动倍数, 调整方式: 将 horizontal 和 vertical 先设置为 1, 开启自瞄后, 不断瞄准目标旁边并按住 F 键, 当准星移动稳定且精准快速不振荡时, 就找到了合适的 ADS 值
+    ads: 0.7,  # 移动倍数, 调整方式: 开启自瞄后, 关闭仿真, 不断瞄准目标旁边并按住 F 键, 当准星移动稳定且精准快速不振荡时, 就找到了合适的 ADS 值
     horizontal: 0.5,  # 水平方向的额外 ADS, 该类值小一点有利于防止被别人识破 AI
     vertical: 0.5,  # 垂直方向的额外 ADS, 该类值小一点有利于防止被别人识破 AI
     radius: 100,  # 瞄准生效半径, 目标瞄点出现在以准星为圆心该值为半径的圆的范围内时才会自动瞄准
@@ -117,33 +117,54 @@ def keyboard(data):
         k.join()
 
 
-def producer(data, queue):
-
-    from toolkit import Detector, Timer
-    detector = Detector(data[weights])
-    winsound.Beep(800, 200)
-
+def c(data, qi):  # 截图进程
+    from toolkit2 import Monitor, Capturer, Timer
+    data[center] = Monitor.center()
+    c1, c2 = data[center]
+    data[region] = c1 - data[size] // 2, c2 - data[size] // 2, data[size], data[size]
     while True:
-
         if data[end]:
             break
         if data[box] or data[aim]:
             begin = time.perf_counter_ns()
-            aims, img = detector.detect(region=data[region], classes=heads.union(bodies), image=data[box], label=False)
+            img = Capturer.grab(win=True, region=data[region], convert=True)
+            try:
+                qi.put(img, block=True, timeout=1)
+                print(f'截图: {Timer.cost(time.perf_counter_ns() - begin)}')
+            except Exception as e:
+                print(f'Capturer Process Exception, {e}')
+
+
+def d(data, qi, qa):  # 检测进程
+    from toolkit2 import Detector, Timer
+    detector = Detector(data[weights])
+    winsound.Beep(800, 200)
+    while True:
+        if data[end]:
+            break
+        if data[box] or data[aim]:
+            begin = time.perf_counter_ns()
+            # 获取截图
+            img = None
+            try:
+                img = qi.get(block=True, timeout=1)
+            except Exception as e:
+                print(f'Detector Process Exception, {e}')
+            if img is None:
+                continue
+            # 检测目标
+            aims, img = detector.detect(img=img, region=data[region], classes=heads.union(bodies), image=data[box], label=False)
             if data[box]:
                 cv2.putText(img, f'{Timer.cost(time.perf_counter_ns() - begin)}', (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.75, (255, 255, 255), 1)
             try:
-                queue.put((aims, img), block=True, timeout=1)
+                qa.put((aims, img), block=True, timeout=1)
+                print(f'检测: {Timer.cost(time.perf_counter_ns() - begin)}')
             except Exception as e:
-                print(f'Producer Exception, {e.args}')
+                print(f'Detector Process Exception, {e}')
 
 
-def consumer(data, queue):
-
-    from toolkit import Monitor, Predictor, Timer
-    data[center] = Monitor.center()
-    c1, c2 = data[center]
-    data[region] = c1 - data[size] // 2, c2 - data[size] // 2, data[size], data[size]
+def a(data, qa):  # 瞄准进程
+    from toolkit2 import Predictor, Timer
     predictor = Predictor()
 
     try:
@@ -205,7 +226,6 @@ def consumer(data, queue):
 
     last = None
     while True:
-
         if data[end]:
             cv2.destroyAllWindows()
             break
@@ -213,9 +233,9 @@ def consumer(data, queue):
             continue
         product = None
         try:
-            product = queue.get(block=True, timeout=1)
+            product = qa.get(block=True, timeout=1)
         except Exception as e:
-            print(f'Consumer Exception, {e.args}')
+            print(f'Aim Process Exception, {e}')
         if not product:
             continue
         aims, img = product
@@ -304,17 +324,19 @@ def consumer(data, queue):
 if __name__ == '__main__':
     multiprocessing.freeze_support()  # windows 平台使用 multiprocessing 必须在 main 中第一行写这个
     manager = multiprocessing.Manager()
-    queue = manager.Queue(maxsize=1)
     data = manager.dict()  # 创建进程安全的共享变量
     data.update(init)  # 将初始数据导入到共享变量
-    # 将键鼠监听和压枪放到单独进程中跑
-    pm = Process(target=mouse, args=(data,), name='Mouse')
-    pk = Process(target=keyboard, args=(data,), name='Keyboard')
-    pp = Process(target=producer, args=(data, queue,), name='Producer')
-    pc = Process(target=consumer, args=(data, queue,), name='Consumer')
+    qi = manager.Queue(maxsize=1)  # 共享队列, 用于截图进程将图片传给检测进程
+    qa = manager.Queue(maxsize=1)  # 共享队列, 用于检测进程将数据传给瞄准进程
+    pm = Process(target=mouse, args=(data,), name='Mouse')  # 鼠标监听进程
+    pk = Process(target=keyboard, args=(data,), name='Keyboard')  # 键盘监听进程
+    pc = Process(target=c, args=(data, qi,), name='Capturer')  # 截图进程
+    pd = Process(target=d, args=(data, qi, qa,), name='Detector')  # 检测进程
+    pa = Process(target=a, args=(data, qa,), name='Aim')  # 瞄准进程
     pm.start()
     pk.start()
-    pp.start()
     pc.start()
+    pd.start()
+    pa.start()
     pk.join()  # 不写 join 的话, 使用 dict 的地方就会报错 conn = self._tls.connection, AttributeError: 'ForkAwareLocal' object has no attribute 'connection'
     pm.terminate()  # 鼠标进程无法主动监听到终止信号, 所以需强制结束
