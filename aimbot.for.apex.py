@@ -226,9 +226,10 @@ def consumer(data, queue):
             _, _, _, height = sr
             if data[head]:
                 # 两种方式, 1:拿到Head框, 2:从Body框里推测Head的位置
-                if clazz in heads:
-                    targets.append((sc, gr))
-                elif clazz in bodies:
+                # if clazz in heads:
+                #     targets.append((sc, gr))
+                # el
+                if clazz in bodies:
                     cx, cy = sc
                     targets.append(((cx, cy - (height // 2 - height // 8)), gr))
             else:
