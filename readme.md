@@ -16,10 +16,12 @@
 - weights.*.pt: 训练好的模型权重文件, 大概训练了下, 识别不一定精准
 - logitech.driver.dll: 大佬封装的调用罗技驱动的库文件
 - logitech.test.py: 用于测试罗技驱动安装配置是否正确
+- detect.realtime.py: 实时展示推理结果, 用于测试权重文件是否好用, 可通过播放Apex集锦来测试
 - grab.*: 截图工具, 用于准备数据集
 - label.*: 标注工具, 用于使用现有模型标注数据集, 完了再手动修正
 - dataset.*.yaml: 训练模型时的数据集配置文件
 - train.*: 训练工具, 用于训练模型
+- detect.*: 推理工具, 用于推理目标检测
 - export.*: 将 .pt 导出为 .engine
 
 参数说明: apex.py 中的 init
