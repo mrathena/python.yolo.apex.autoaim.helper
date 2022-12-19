@@ -156,12 +156,12 @@ class Predictor:
 class Detector:
 
     @smart_inference_mode()
-    def __init__(self, weights, classes=None):
+    def __init__(self, weights, classes=None, confidence=0.25):
         self.weights = weights
         self.source = 'data/images'  # file/dir/URL/glob, 0 for webcam
         self.data = 'data/coco128.yaml'  # dataset.yaml path
         self.imgsz = (640, 640)  # inference size (height, width)
-        self.conf_thres = 0.25  # confidence threshold
+        self.conf_thres = confidence  # confidence threshold
         self.iou_thres = 0  # NMS IOU threshold
         self.max_det = 1000  # maximum detections per image
         self.device = ''  # cuda device, i.e. 0 or 0,1,2,3 or cpu
@@ -240,7 +240,7 @@ class Detector:
                 gx = int((xyxy[0] + xyxy[2]) / 2)
                 gy = int((xyxy[1] + xyxy[3]) / 2)
                 # confidence 置信度
-                aims.append((clazz, float(conf), (sx, sy), (gx, gy), (sl, st, sw, sh), (gl, gt, gw, gh)))
+                aims.append((c, clazz, float(conf), (sx, sy), (gx, gy), (sl, st, sw, sh), (gl, gt, gw, gh)))
                 if image:
                     label2 = (f'{c}:{clazz} {conf:.2f}' if confidence else f'{clazz}') if label else None
                     annotator.box_label(xyxy, label2, color=colors(0, True))

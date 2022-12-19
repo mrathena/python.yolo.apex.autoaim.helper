@@ -10,6 +10,8 @@ from win32con import HWND_TOPMOST, SWP_NOMOVE, SWP_NOSIZE
 import winsound
 from simple_pid import PID  # pip install simple-pid
 
+a = 'a'
+d = 'd'
 ads = 'ads'
 end = 'end'
 box = 'box'
@@ -46,13 +48,15 @@ init = {
     end: False,  # 退出标记, End
     box: False,  # 显示开关, Up
     show: False,  # 显示状态
-    aim: False,  # 瞄准开关, Down, X2(侧上键)
+    aim: True,  # 瞄准开关, Down, X2(侧上键)
     lock: False,  # 锁定状态(开火/预瞄)
     timestamp: None,  # 开火时间
     head: False,  # 是否瞄头, Right
     predict: False,  # 是否预瞄, Left
-    emulation: True,  # 是否仿真(减小力度加随机值), PageDown
+    emulation: False,  # 是否仿真(减小力度加随机值), PageDown
     randomness: False,  # 仿真时是否随机左右偏移, PageUp
+    a: False,  # A 键状态, 是否被按下
+    d: False,  # D 键状态, 是否被按下
 }
 
 
@@ -86,6 +90,10 @@ def keyboard(data):
             return
         if key == pynput.keyboard.KeyCode.from_char('f'):
             data[lock] = True
+        elif key == pynput.keyboard.KeyCode.from_char('a'):
+            data[a] = True
+        elif key == pynput.keyboard.KeyCode.from_char('d'):
+            data[d] = True
 
     def release(key):
         if key == pynput.keyboard.Key.end:
@@ -97,6 +105,10 @@ def keyboard(data):
             return
         if key == pynput.keyboard.KeyCode.from_char('f'):
             data[lock] = False
+        elif key == pynput.keyboard.KeyCode.from_char('a'):
+            data[a] = False
+        elif key == pynput.keyboard.KeyCode.from_char('d'):
+            data[d] = False
         elif key == pynput.keyboard.Key.up:
             data[box] = not data[box]
             winsound.Beep(800 if data[box] else 400, 200)
@@ -123,7 +135,7 @@ def keyboard(data):
 def producer(data, queue):
 
     from toolkit import Detector, Timer
-    detector = Detector(data[weights], data[classes])
+    detector = Detector(data[weights], data[classes], data[confidence])
     winsound.Beep(800, 200)
 
     while True:
@@ -223,15 +235,11 @@ def consumer(data, queue):
             continue
         aims, img = product
         targets = []
-        for clazz, conf, sc, gc, sr, gr in aims:
-            # 置信度过滤
-            if conf < data[confidence]:
-                continue
-            # 拿到指定的分类
+        for index, clazz, conf, sc, gc, sr, gr in aims:
             _, _, _, height = sr
             cx, cy = sc
             targets.append(((cx, cy - (height // 2 - height // (8 if data[head] else 3))), gr))  # 计算身体和头在方框中的大概位置来获得瞄点, 没有采用头标签的方式(感觉效果特别差)
-        target = None
+        target = None  # 格式: (sc, gr), sc:屏幕坐标系下的目标所在点(瞄点坐标), gr:截图坐标系下的边框ltwh
         predicted = None
         if len(targets) != 0:
             # 拿到瞄准目标
@@ -258,11 +266,19 @@ def consumer(data, queue):
         # 检测瞄准开关
         if data[aim] and data[lock]:
             if target:
-                sc, _ = target
+                sc, gr = target
                 if inner(sc):
                     # 计算要移动的像素
                     cx, cy = data[center]  # 准星所在点(屏幕中心)
                     sx, sy = sc  # 目标所在点
+                    # 考虑AD偏移
+                    shift = gr[2] // 3
+                    if data[a] and data[d]:
+                        sx = sx
+                    elif data[a] and not data[d]:
+                        sx = sx + shift
+                    elif not data[a] and data[d]:
+                        sx = sx - shift
                     px, py = predicted  # 目标将在点
                     if data[predict]:
                         x = int(px - cx)
