@@ -18,7 +18,7 @@ show = 'show'
 head = 'head'
 lock = 'lock'
 size = 'size'
-heads = {'head', '1'}
+heads = {'head'}
 bodies = {'body', '0'}
 region = 'region'
 center = 'center'
@@ -32,11 +32,11 @@ horizontal = 'horizontal'
 confidence = 'confidence'
 randomness = 'randomness'
 init = {
-    ads: 1,  # 移动倍数, 调整方式: 将 horizontal 和 vertical 先设置为 1, 开启自瞄后, 不断瞄准目标旁边并按住 F 键, 当准星移动稳定且精准快速不振荡时, 就找到了合适的 ADS 值
+    ads: 1,  # 移动倍数, 调整方式: 关闭仿真并开启自瞄后, 不断瞄准目标旁边并按住 F 键, 当准星移动稳定且精准快速不振荡时, 就找到了合适的 ADS 值
     horizontal: 0.5,  # 水平方向的额外 ADS, 该类值小一点有利于防止被别人识破 AI
     vertical: 0.5,  # 垂直方向的额外 ADS, 该类值小一点有利于防止被别人识破 AI
     radius: 100,  # 瞄准生效半径, 目标瞄点出现在以准星为圆心该值为半径的圆的范围内时才会自动瞄准
-    weights: 'weights.apex.public.group.967082372.6B1F97EE730737D93225D665AF496315-v5-6.1-s-640-10000.engine',  # 权重文件 weights.apex.public.dummy.engine weights.apex.public.engine
+    weights: 'weights.apex.public.dummy.pt',  # 权重文件 weights.apex.public.dummy.engine weights.apex.public.engine
     confidence: 0.5,  # 置信度, 低于该值的认为是干扰
     size: 400,  # 截图的尺寸, 屏幕中心 size*size 大小
     center: None,  # 屏幕中心点
