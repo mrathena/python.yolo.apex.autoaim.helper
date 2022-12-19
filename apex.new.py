@@ -119,7 +119,7 @@ def keyboard(data):
 
 def c(data, qi):  # 截图进程
     from toolkit2 import Monitor, Capturer, Timer
-    data[center] = Monitor.center()
+    data[center] = Monitor.resolution.center()
     c1, c2 = data[center]
     data[region] = c1 - data[size] // 2, c2 - data[size] // 2, data[size], data[size]
     while True:

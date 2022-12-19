@@ -141,8 +141,8 @@ def producer(data, queue):
 
 def consumer(data, queue):
 
-    from toolkit import Monitor, Predictor, Timer
-    data[center] = Monitor.center()
+    from toolkit import Monitor, Predictor
+    data[center] = Monitor.resolution.center()
     c1, c2 = data[center]
     data[region] = c1 - data[size] // 2, c2 - data[size] // 2, data[size], data[size]
     predictor = Predictor()

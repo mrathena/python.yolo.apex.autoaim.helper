@@ -6,9 +6,10 @@ import mss
 import numpy as np
 import torch
 from win32api import GetSystemMetrics
-from win32con import SRCCOPY, SM_CXSCREEN, SM_CYSCREEN
-from win32gui import GetDesktopWindow, GetWindowDC, DeleteObject, ReleaseDC
+from win32con import SRCCOPY, SM_CXSCREEN, SM_CYSCREEN, DESKTOPHORZRES, DESKTOPVERTRES
+from win32gui import GetDesktopWindow, GetWindowDC, DeleteObject, GetDC, ReleaseDC
 from win32ui import CreateDCFromHandle, CreateBitmap
+from win32print import GetDeviceCaps
 
 from models.common import DetectMultiBackend
 from utils.augmentations import letterbox
@@ -89,22 +90,35 @@ class Capturer:
 
 class Monitor:
 
-    @staticmethod
-    def resolution():
-        """
-        显示分辨率
-        """
-        w = GetSystemMetrics(SM_CXSCREEN)
-        h = GetSystemMetrics(SM_CYSCREEN)
-        return w, h
+    class resolution:
 
-    @staticmethod
-    def center():
-        """
-        屏幕中心点
-        """
-        w, h = Monitor.resolution()
-        return w // 2, h // 2
+        @staticmethod
+        def show():
+            """
+            显示分辨率
+            """
+            w = GetSystemMetrics(SM_CXSCREEN)
+            h = GetSystemMetrics(SM_CYSCREEN)
+            return w, h
+
+        @staticmethod
+        def real():
+            """
+            物理分辨率
+            """
+            hDC = GetDC(None)
+            w = GetDeviceCaps(hDC, DESKTOPHORZRES)
+            h = GetDeviceCaps(hDC, DESKTOPVERTRES)
+            ReleaseDC(None, hDC)
+            return w, h
+
+        @staticmethod
+        def center():
+            """
+            物理屏幕中心点
+            """
+            w, h = Monitor.resolution.real()
+            return w // 2, h // 2
 
 
 class Timer:
