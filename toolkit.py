@@ -156,7 +156,7 @@ class Predictor:
 class Detector:
 
     @smart_inference_mode()
-    def __init__(self, weights):
+    def __init__(self, weights, classes=None):
         self.weights = weights
         self.source = 'data/images'  # file/dir/URL/glob, 0 for webcam
         self.data = 'data/coco128.yaml'  # dataset.yaml path
@@ -170,7 +170,7 @@ class Detector:
         self.save_conf = False  # save confidences in --save-txt labels
         self.save_crop = False  # save cropped prediction boxes
         self.nosave = False  # do not save images/videos
-        self.classes = None  # filter by class: --class 0, or --class 0 2 3, 数字, 需要自己将类别转成类别索引
+        self.classes = classes  # filter by class: --class 0, or --class 0 2 3, 数字, 需要自己将类别转成类别索引, None 检测全部标签
         self.agnostic_nms = False  # class-agnostic NMS
         self.augment = False  # augmented inference
         self.visualize = False  # visualize features
@@ -194,7 +194,7 @@ class Detector:
         self.model.warmup(imgsz=(1 if self.pt else bs, 3, *self.imgsz))  # warmup
 
     @smart_inference_mode()
-    def detect(self, region, classes=None, image=False, label=True, confidence=True):
+    def detect(self, region, image=False, label=True, confidence=True):
         # 截图和转换
         t1 = time.perf_counter_ns()
         # 截屏范围 region = (left, top, width, height)
@@ -225,8 +225,6 @@ class Detector:
             for *xyxy, conf, cls in reversed(det):
                 c = int(cls)  # integer class
                 clazz = self.names[c] if not self.weights.endswith('.engine') else str(c)  # 类别
-                if classes and clazz not in classes:
-                    continue
                 # 屏幕坐标系下, 框的 ltwh 和 框的中心点 xy
                 sl = int(region[0] + xyxy[0])
                 st = int(region[1] + xyxy[1])
@@ -244,7 +242,7 @@ class Detector:
                 # confidence 置信度
                 aims.append((clazz, float(conf), (sx, sy), (gx, gy), (sl, st, sw, sh), (gl, gt, gw, gh)))
                 if image:
-                    label2 = (f'{clazz} {conf:.2f}' if confidence else f'{clazz}') if label else None
+                    label2 = (f'{c}:{clazz} {conf:.2f}' if confidence else f'{clazz}') if label else None
                     annotator.box_label(xyxy, label2, color=colors(0, True))
                     # 下面是自己写的给框中心画点, 在 Annotator 类所在的 plots.py 中的 box_label 方法下添加如下方法
                     """

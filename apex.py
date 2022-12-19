@@ -24,6 +24,7 @@ region = 'region'
 center = 'center'
 radius = 'radius'
 weights = 'weights'
+classes = 'classes'
 predict = 'predict'
 vertical = 'vertical'
 timestamp = 'timestamp'
@@ -32,13 +33,14 @@ horizontal = 'horizontal'
 confidence = 'confidence'
 randomness = 'randomness'
 init = {
-    ads: 1,  # 移动倍数, 调整方式: 关闭仿真并开启自瞄后, 不断瞄准目标旁边并按住 F 键, 当准星移动稳定且精准快速不振荡时, 就找到了合适的 ADS 值
-    horizontal: 0.5,  # 水平方向的额外 ADS, 该类值小一点有利于防止被别人识破 AI
-    vertical: 0.5,  # 垂直方向的额外 ADS, 该类值小一点有利于防止被别人识破 AI
-    radius: 100,  # 瞄准生效半径, 目标瞄点出现在以准星为圆心该值为半径的圆的范围内时才会自动瞄准
-    weights: 'weights.apex.public.dummy.pt',  # 权重文件 weights.apex.public.dummy.engine weights.apex.public.engine
+    weights: 'weights.apex.public.dummy.engine',  # 权重文件, weights.apex.public.dummy.engine, weights.apex.public.engine
+    classes: 0,  # 要检测的标签的序号(标签序号从0开始, 只能写一个), 只有该序号指定的标签才会被检测识别. 举例: 模型有[0:enemy,1:team]两个标签, 要检测[enemy]就写 0, 要检测[team]就写 1
     confidence: 0.5,  # 置信度, 低于该值的认为是干扰
     size: 400,  # 截图的尺寸, 屏幕中心 size*size 大小
+    radius: 100,  # 瞄准生效半径, 目标瞄点出现在以准星为圆心该值为半径的圆的范围内时才会自动瞄准
+    ads: 1,  # 移动倍数, 调整方式: 关闭仿真并开启自瞄后, 不断瞄准目标旁边并按住 F 键, 当准星移动稳定且精准快速不振荡时, 就找到了合适的 ADS 值
+    horizontal: 0.5,  # 水平方向的额外瞄准力度倍数, 该类值小一点有利于防止被别人识破 AI
+    vertical: 0.5,  # 垂直方向的额外瞄准力度倍数, 该类值小一点有利于防止被别人识破 AI
     center: None,  # 屏幕中心点
     region: None,  # 截图范围
     end: False,  # 退出标记, End
@@ -55,8 +57,8 @@ init = {
 
 
 def game():
-    # return 'Apex Legends' in GetWindowText(GetForegroundWindow())
-    return True
+    return 'Apex Legends' in GetWindowText(GetForegroundWindow())
+    # return True
 
 
 def mouse(data):
@@ -121,7 +123,7 @@ def keyboard(data):
 def producer(data, queue):
 
     from toolkit import Detector, Timer
-    detector = Detector(data[weights])
+    detector = Detector(data[weights], data[classes])
     winsound.Beep(800, 200)
 
     while True:
@@ -130,13 +132,13 @@ def producer(data, queue):
             break
         if data[box] or data[aim]:
             begin = time.perf_counter_ns()
-            aims, img = detector.detect(region=data[region], classes=heads.union(bodies), image=data[box], label=False)
+            aims, img = detector.detect(region=data[region], image=data[box], label=False)
             if data[box]:
                 cv2.putText(img, f'{Timer.cost(time.perf_counter_ns() - begin)}', (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.75, (255, 255, 255), 1)
             try:
                 queue.put((aims, img), block=True, timeout=1)
             except Exception as e:
-                print(f'Producer Exception, {e.args}')
+                print(f'Producer Exception')
 
 
 def consumer(data, queue):
@@ -216,7 +218,7 @@ def consumer(data, queue):
         try:
             product = queue.get(block=True, timeout=1)
         except Exception as e:
-            print(f'Consumer Exception, {e.args}')
+            print(f'Consumer Exception')
         if not product:
             continue
         aims, img = product
@@ -227,18 +229,8 @@ def consumer(data, queue):
                 continue
             # 拿到指定的分类
             _, _, _, height = sr
-            if data[head]:
-                # 两种方式, 1:拿到Head框, 2:从Body框里推测Head的位置
-                # if clazz in heads:
-                #     targets.append((sc, gr))
-                # el
-                if clazz in bodies:
-                    cx, cy = sc
-                    targets.append(((cx, cy - (height // 2 - height // 8)), gr))
-            else:
-                if clazz in bodies:
-                    cx, cy = sc
-                    targets.append(((cx, cy - (height // 2 - height // 3)), gr))  # 检测身体的时候, 因为中心位置不太好, 所以对应往上调一点
+            cx, cy = sc
+            targets.append(((cx, cy - (height // 2 - height // (8 if data[head] else 3))), gr))  # 计算身体和头在方框中的大概位置来获得瞄点, 没有采用头标签的方式(感觉效果特别差)
         target = None
         predicted = None
         if len(targets) != 0:
