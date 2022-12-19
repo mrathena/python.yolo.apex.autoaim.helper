@@ -221,6 +221,7 @@ class Detector:
         if len(det):
             im0 = img0
             self.names = self.model.module.names if hasattr(self.model, 'module') else self.model.names  # get class names
+            print(self.names)
             det[:, :4] = scale_coords(im.shape[2:], det[:, :4], im0.shape).round()
             for *xyxy, conf, cls in reversed(det):
                 c = int(cls)  # integer class
