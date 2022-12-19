@@ -69,8 +69,8 @@ class Capturer:
         """
         # 补全范围
         if not region:
-            w, h = Monitor.resolution()
-            region = 0, 0, w, h
+            w, h = Monitor.resolution.real()
+            region = w // 5 * 2, h // 3, w // 5, h // 3
         # 范围截图
         if win:
             img = Capturer.grabWithWin(region)
