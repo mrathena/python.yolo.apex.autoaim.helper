@@ -213,9 +213,6 @@ def consumer(data, queue):
                     minimum = distance
         return targets[index]
 
-    pidx = PID(1, 0, 0, setpoint=0, sample_time=0.001)
-    pidx.output_limits = (-100, 100)
-
     title = 'Realtime ScreenGrab Detect'
 
     last = None
@@ -279,6 +276,7 @@ def consumer(data, queue):
                         sx = sx + shift
                     elif not data[a] and data[d]:
                         sx = sx - shift
+                    # 考虑目标预测
                     px, py = predicted  # 目标将在点
                     if data[predict]:
                         x = int(px - cx)
@@ -286,15 +284,15 @@ def consumer(data, queue):
                     else:
                         x = sx - cx
                         y = sy - cy
+                    # 考虑倍数和仿真
                     ax = int(x * data[ads] * (data[horizontal] if data[emulation] else 1))
                     if data[emulation] and data[randomness]:
                         temp = -1 if x >= 0 else 1
                         ax = (random.randint(0, 8) * temp) if random.random() <= 0.2 else ax
                     ay = int(y * data[ads] * (data[vertical] if data[emulation] else 1))
-                    # px = int(pidx(ax))
                     px = int(ax)
                     py = int(ay)
-                    # print(f'移动像素:{x},{y}, ADS:{ax},{ay}, PID:{(px, py)}')
+                    # print(f'移动像素:{x},{y}, ADS:{ax},{ay}')
                     move(px, py)
         # 检测显示开关
         if data[box]:
