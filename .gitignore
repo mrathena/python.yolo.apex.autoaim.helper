@@ -258,5 +258,5 @@ fabric.properties
 
 
 # Customer
-weights.apex.*.pt
+weights.apex.private.*.pt
 
