@@ -295,6 +295,20 @@ def consumer(data, queue):
 
     title = 'Realtime ScreenGrab Detect'
 
+    # pid https://github.com/davidhoung2/APEX-yolov5-aim-assist/blob/main/apex.py
+    # PID 係數可調整
+    # PID(P, I, D)
+    # P: 加快系統反映。輸出值較快，但越大越不穩定
+    # I: 積分。用於穩定誤差
+    # D: 微分。提高系統的動態性能
+    # 以下為個人使用參數可供參考
+    pidx = PID(1.2, 8, 0.03, setpoint=0, sample_time=0.001, )
+    pidy = PID(1.22, 3, 0.001, setpoint=0, sample_time=0.001, )
+    pidx = PID(1.2, 3.51, 0.0, setpoint=0, sample_time=0.001, )
+    pidy = PID(1.22, 0.12, 0.0, setpoint=0, sample_time=0.001, )
+    pidx.output_limits = (-4000, 4000)
+    pidy.output_limits = (-3000, 3000)
+
     last = None
     while True:
 
@@ -373,13 +387,18 @@ def consumer(data, queue):
                         temp = -1 if x >= 0 else 1
                         ax = (random.randint(0, 8) * temp) if random.random() <= 0.2 else ax
                     ay = int(y * data[ads] * (data[vertical] if data[emulation] else 1))
-                    px = int(ax)
-                    py = int(ay)
-                    # print(f'移动像素:{x},{y}, ADS:{ax},{ay}')
+                    # pid
+                    px = int(pidx(ax))
+                    py = int(pidy(ay))
+                    print(f'目标位置:{sx},{sy}, 移动像素:{x},{y}, ADS:{ax},{ay}, PID:{px},{py}')
+                    # 移动
                     if data[emulation]:
                         mxy(10, px, py)
                     else:
                         move(px, py)
+        # pid 不知道干什么, 感觉像是重置之类的意思
+        pidx(0)
+        pidy(0)
         # 检测显示开关
         if data[box]:
             if img is None:
