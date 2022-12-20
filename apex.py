@@ -3,6 +3,8 @@ import multiprocessing
 import random
 import time
 from multiprocessing import Process
+from queue import Full, Empty
+
 import cv2
 import pynput
 from win32gui import GetCursorPos, FindWindow, SetWindowPos, GetWindowText, GetForegroundWindow
@@ -12,6 +14,7 @@ from simple_pid import PID  # pip install simple-pid
 
 a = 'a'
 d = 'd'
+ad = 'ad'
 ads = 'ads'
 end = 'end'
 box = 'box'
@@ -34,8 +37,9 @@ emulation = 'emulation'
 horizontal = 'horizontal'
 confidence = 'confidence'
 randomness = 'randomness'
+
 init = {
-    weights: 'weights.apex.public.dummy.engine',  # 权重文件, weights.apex.public.dummy.engine, weights.apex.public.engine
+    weights: 'weights.apex.public.group.967082372.6B1F97EE730737D93225D665AF496315-v5-6.1-s-640-10000-1-body.engine',  # 权重文件, weights.apex.public.dummy.engine, weights.apex.public.engine
     classes: 0,  # 要检测的标签的序号(标签序号从0开始, 只能写一个), 只有该序号指定的标签才会被检测识别. 举例: 模型有[0:enemy,1:team]两个标签, 要检测[enemy]就写 0, 要检测[team]就写 1
     confidence: 0.5,  # 置信度, 低于该值的认为是干扰
     size: 400,  # 截图的尺寸, 屏幕中心 size*size 大小
@@ -55,14 +59,15 @@ init = {
     predict: False,  # 是否预瞄, Left
     emulation: False,  # 是否仿真(减小力度加随机值), PageDown
     randomness: False,  # 仿真时是否随机左右偏移, PageUp
+    ad: False,  # AD 模式开关, F12
     a: False,  # A 键状态, 是否被按下
     d: False,  # D 键状态, 是否被按下
 }
 
 
 def game():
-    return 'Apex Legends' in GetWindowText(GetForegroundWindow())
-    # return True
+    # return 'Apex Legends' in GetWindowText(GetForegroundWindow())
+    return True
 
 
 def mouse(data):
@@ -109,6 +114,9 @@ def keyboard(data):
             data[a] = False
         elif key == pynput.keyboard.KeyCode.from_char('d'):
             data[d] = False
+        elif key == pynput.keyboard.Key.f12:
+            data[ad] = not data[ad]
+            winsound.Beep(800 if data[ad] else 400, 200)
         elif key == pynput.keyboard.Key.up:
             data[box] = not data[box]
             winsound.Beep(800 if data[box] else 400, 200)
@@ -144,13 +152,15 @@ def producer(data, queue):
             break
         if data[box] or data[aim]:
             begin = time.perf_counter_ns()
-            aims, img = detector.detect(region=data[region], image=data[box], label=False)
+            aims, img = detector.detect(region=data[region], image=data[box], label=True, confidence=True)
             if data[box]:
                 cv2.putText(img, f'{Timer.cost(time.perf_counter_ns() - begin)}', (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.75, (255, 255, 255), 1)
             try:
                 queue.put((aims, img), block=True, timeout=1)
-            except Exception as e:
-                print(f'Producer Exception')
+            except Full:
+                print(f'Producer: Queue Full')
+            except:
+                print('Process Producer Error')
 
 
 def consumer(data, queue):
@@ -178,6 +188,76 @@ def consumer(data, queue):
             mx = x - ox
             my = y - oy
         driver.moveR(mx, my, True)
+
+    def lowestCommonMultiple(x: int, y: int):  # 最小公倍数
+        m, n = x, y
+        k = m * n  # k存储两数的乘积
+        if m < n:  # 比较两个数的大小，使得m中存储大数，n中存储小数
+            temp = m
+            m = n
+            n = temp
+        b = m % n  # b存储m除以n的余数
+        while b != 0:
+            m = n  # 原来的小数作为下次运算时的大数
+            n = b  # 将上一次的余数作为下次相除时的小数
+            b = m % n
+        result = k // n  # 两数乘积除以最大公约数即为它们的最小公倍数
+        return result
+
+    def m(millis: int, horizontal: bool, pixel: int):
+        if pixel == 0:
+            return
+        begin = time.perf_counter_ns()
+        times = 0  # 移动次数, 循环判断条件
+        absx = abs(pixel)
+        direction = pixel // absx  # 方向(值只能是正负1)
+        nanos = millis * 1_000_000  # 毫秒转纳秒
+        while True:  # do-while
+            # setup code
+            times += 1  # 循环次数的取值范围是[1,100], 101时会break
+            # break condition
+            if times > absx:
+                break
+            # loop body
+            # 移动
+            if horizontal:
+                move(direction, 0)
+            else:
+                move(0, direction)  # 移动方式为: 移动-间隔-移动-间隔-移动-间隔-...-间隔-移动-间隔-移动-间隔-移动, 所以间隔比移动次数少一次
+            # 间隔
+            if times < absx:
+                flag = time.perf_counter_ns()
+                cost = (nanos - (flag - begin)) // (absx - times)  # 每移动一个像素的耗时
+                while time.perf_counter_ns() - flag < cost:
+                    pass
+
+    def mxy(millis: int, x: int, y: int):  # 在指定毫秒内在水平和垂直方向上移动指定像素
+        if x == 0 and y == 0:
+            return
+        elif x == 0 and y != 0:
+            m(millis=millis, horizontal=False, pixel=y)
+        elif x != 0 and y == 0:
+            m(millis=millis, horizontal=True, pixel=x)
+        else:
+            absx = abs(x)  # 距离的绝对值
+            absy = abs(y)
+            nanos = millis * 1_000_000  # 毫秒转纳秒
+            dirx = x // absx  # direction 方向 (值只能是正负1)
+            diry = y // absy
+            multiple = lowestCommonMultiple(absx, absy)  # 最小公倍数, 需要将时间分割的段数
+            divisorx = multiple // absx
+            divisory = multiple // absy
+            step = nanos // multiple  # 时间跨度步长, 时间每过一个步长, 都需要判断下该时间点是否需要对两个方向做移动
+            for i in range(multiple):
+                if i % divisorx == 0:
+                    move(dirx, 0)
+                if i % divisory == 0:
+                    move(0, diry)
+                flag = time.perf_counter_ns()
+                while time.perf_counter_ns() - flag < step:
+                    pass
+                # 获取坐标
+                # print(GetCursorPos())
 
     def inner(point):
         """
@@ -226,8 +306,10 @@ def consumer(data, queue):
         product = None
         try:
             product = queue.get(block=True, timeout=1)
-        except Exception as e:
-            print(f'Consumer Exception')
+        except Empty:
+            print(f'Consumer: Queue Empty')
+        except:
+            print('Process Consumer Error')
         if not product:
             continue
         aims, img = product
@@ -269,16 +351,17 @@ def consumer(data, queue):
                     cx, cy = data[center]  # 准星所在点(屏幕中心)
                     sx, sy = sc  # 目标所在点
                     # 考虑AD偏移
-                    shift = gr[2] // 3
-                    if data[a] and data[d]:
-                        sx = sx
-                    elif data[a] and not data[d]:
-                        sx = sx + shift
-                    elif not data[a] and data[d]:
-                        sx = sx - shift
+                    if data[ad]:
+                        shift = gr[2] // 2
+                        if data[a] and data[d]:
+                            sx = sx
+                        elif data[a] and not data[d]:
+                            sx = sx + shift
+                        elif not data[a] and data[d]:
+                            sx = sx - shift
                     # 考虑目标预测
                     px, py = predicted  # 目标将在点
-                    if data[predict]:
+                    if data[predict] and abs(px - sx) < 50:
                         x = int(px - cx)
                         y = int(py - cy)
                     else:
@@ -293,7 +376,10 @@ def consumer(data, queue):
                     px = int(ax)
                     py = int(ay)
                     # print(f'移动像素:{x},{y}, ADS:{ax},{ay}')
-                    move(px, py)
+                    if data[emulation]:
+                        mxy(10, px, py)
+                    else:
+                        move(px, py)
         # 检测显示开关
         if data[box]:
             if img is None:
