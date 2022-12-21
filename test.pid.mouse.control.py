@@ -65,7 +65,7 @@ while time.perf_counter_ns() - begin < 1000 * 1_000_000:
         print(cost(now - begin))
         break
 
-    time.sleep(0.001)
+    # time.sleep(0.001)
 
 
 print(f'结束: {v}, {cost(time.perf_counter_ns() - begin)}')
