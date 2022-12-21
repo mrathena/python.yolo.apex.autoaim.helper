@@ -43,7 +43,7 @@ setpoint, y, x = [], [], []
 v = GetCursorPos()[0]
 print(v)
 # 水平方向 pid 移动, 从当前点v移动到 x=3000 的位置
-pid = PID(0.25, 0, 0, setpoint=v)
+pid = PID(0.25, 0.005, 0, setpoint=v)
 begin = time.perf_counter_ns()
 
 while time.perf_counter_ns() - begin < 1000 * 1_000_000:
@@ -52,8 +52,6 @@ while time.perf_counter_ns() - begin < 1000 * 1_000_000:
 
     control = int(pid(v))
     move(control, 0)
-    # while time.perf_counter_ns() - now < 100_000:
-    #     pass
     v = GetCursorPos()[0]
 
     # 用于输出结果可视化
