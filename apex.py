@@ -388,8 +388,10 @@ def consumer(data, queue):
                         ax = (random.randint(0, 8) * temp) if random.random() <= 0.2 else ax
                     ay = int(y * data[ads] * (data[vertical] if data[emulation] else 1))
                     # pid
-                    px = int(pidx(ax))
-                    py = int(pidy(ay))
+                    # px = int(pidx(ax))
+                    # py = int(pidy(ay))
+                    px = int(ax)
+                    py = int(ay)
                     print(f'目标位置:{sx},{sy}, 移动像素:{x},{y}, ADS:{ax},{ay}, PID:{px},{py}')
                     # 移动
                     if data[emulation]:
