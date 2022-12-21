@@ -39,12 +39,12 @@ confidence = 'confidence'
 randomness = 'randomness'
 
 init = {
-    weights: 'weights.apex.private.crony.1435244588.1127E7B7107206013DE38A10EDDEEEB3-v5-n-416-50000-3-0.1.2.engine',  # 权重文件, weights.apex.public.dummy.engine, weights.apex.public.engine, weights.apex.private.crony.1435244588.1127E7B7107206013DE38A10EDDEEEB3-v5-n-416-50000-3-0.1.2.engine
+    weights: 'weights.apex.public.dummy.engine',  # 权重文件, weights.apex.public.dummy.engine, weights.apex.public.engine, weights.apex.private.crony.1435244588.1127E7B7107206013DE38A10EDDEEEB3-v5-n-416-50000-3-0.1.2.engine
     classes: 0,  # 要检测的标签的序号(标签序号从0开始, 只能写一个), 只有该序号指定的标签才会被检测识别. 举例: 模型有[0:enemy,1:team]两个标签, 要检测[enemy]就写 0, 要检测[team]就写 1
     confidence: 0.5,  # 置信度, 低于该值的认为是干扰
     size: 400,  # 截图的尺寸, 屏幕中心 size*size 大小
-    radius: 100,  # 瞄准生效半径, 目标瞄点出现在以准星为圆心该值为半径的圆的范围内时才会自动瞄准
-    ads: 1,  # 移动倍数, 调整方式: 关闭仿真并开启自瞄后, 不断瞄准目标旁边并按住 F 键, 当准星移动稳定且精准快速不振荡时, 就找到了合适的 ADS 值
+    radius: 200,  # 瞄准生效半径, 目标瞄点出现在以准星为圆心该值为半径的圆的范围内时才会自动瞄准
+    ads: 0.5,  # 移动倍数, 调整方式: 关闭仿真并开启自瞄后, 不断瞄准目标旁边并按住 F 键, 当准星移动稳定且精准快速不振荡时, 就找到了合适的 ADS 值
     horizontal: 0.5,  # 水平方向的额外瞄准力度倍数, 该类值小一点有利于防止被别人识破 AI
     vertical: 0.5,  # 垂直方向的额外瞄准力度倍数, 该类值小一点有利于防止被别人识破 AI
     center: None,  # 屏幕中心点
@@ -350,21 +350,21 @@ def consumer(data, queue):
                     # 计算要移动的像素
                     cx, cy = data[center]  # 准星所在点(屏幕中心)
                     sx, sy = sc  # 目标所在点
-                    # 考虑AD偏移
-                    if data[ad]:
-                        shift = gr[2] // 3
-                        if data[a] and data[d]:
-                            sx = sx
-                        elif data[a] and not data[d]:
-                            sx = sx + shift
-                        elif not data[a] and data[d]:
-                            sx = sx - shift
                     # 考虑目标预测
                     px, py = predicted  # 目标将在点
                     if data[predict] and abs(px - sx) < 50:
                         x = int(px - cx)
                         y = int(py - cy)
                     else:
+                        # 考虑AD偏移
+                        if data[ad]:
+                            shift = gr[2] // 3
+                            if data[a] and data[d]:
+                                sx = sx
+                            elif data[a] and not data[d]:
+                                sx = sx + shift
+                            elif not data[a] and data[d]:
+                                sx = sx - shift
                         x = sx - cx
                         y = sy - cy
                     # 考虑倍数和仿真
