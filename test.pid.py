@@ -29,7 +29,7 @@ if __name__ == '__main__':
     temp = heater.temp
     # 设置PID的三个参数，以及限制输出
     pid = PID(2, 0.01, 0.1, setpoint=temp)  # 原版数据
-    pid = PID(1, 0, 0, setpoint=temp)
+    pid = PID(2, 0.01, 100, setpoint=temp)
     pid.output_limits = (0, None)
     # 用于设置时间参数
     start_time = time.time()
