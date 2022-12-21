@@ -39,7 +39,7 @@ confidence = 'confidence'
 randomness = 'randomness'
 
 init = {
-    weights: 'weights.apex.public.group.967082372.6B1F97EE730737D93225D665AF496315-v5-6.1-s-640-10000-1-body.engine',  # 权重文件, weights.apex.public.dummy.engine, weights.apex.public.engine
+    weights: 'weights.apex.public.dummy.engine',  # 权重文件, weights.apex.public.dummy.engine, weights.apex.public.engine, weights.apex.public.group.967082372.6B1F97EE730737D93225D665AF496315-v5-6.1-s-640-10000-1-body.engine
     classes: 0,  # 要检测的标签的序号(标签序号从0开始, 只能写一个), 只有该序号指定的标签才会被检测识别. 举例: 模型有[0:enemy,1:team]两个标签, 要检测[enemy]就写 0, 要检测[team]就写 1
     confidence: 0.5,  # 置信度, 低于该值的认为是干扰
     size: 400,  # 截图的尺寸, 屏幕中心 size*size 大小
@@ -59,7 +59,7 @@ init = {
     predict: False,  # 是否预瞄, Left
     emulation: False,  # 是否仿真(减小力度加随机值), PageDown
     randomness: False,  # 仿真时是否随机左右偏移, PageUp
-    ad: False,  # AD 模式开关, F12
+    ad: True,  # AD 模式开关, F11
     a: False,  # A 键状态, 是否被按下
     d: False,  # D 键状态, 是否被按下
 }
@@ -114,7 +114,7 @@ def keyboard(data):
             data[a] = False
         elif key == pynput.keyboard.KeyCode.from_char('d'):
             data[d] = False
-        elif key == pynput.keyboard.Key.f12:
+        elif key == pynput.keyboard.Key.f11:
             data[ad] = not data[ad]
             winsound.Beep(800 if data[ad] else 400, 200)
         elif key == pynput.keyboard.Key.up:
@@ -295,20 +295,6 @@ def consumer(data, queue):
 
     title = 'Realtime ScreenGrab Detect'
 
-    # pid https://github.com/davidhoung2/APEX-yolov5-aim-assist/blob/main/apex.py
-    # PID 係數可調整
-    # PID(P, I, D)
-    # P: 加快系統反映。輸出值較快，但越大越不穩定
-    # I: 積分。用於穩定誤差
-    # D: 微分。提高系統的動態性能
-    # 以下為個人使用參數可供參考
-    pidx = PID(1.2, 8, 0.03, setpoint=0, sample_time=0.001, )
-    pidy = PID(1.22, 3, 0.001, setpoint=0, sample_time=0.001, )
-    pidx = PID(1.2, 3.51, 0.0, setpoint=0, sample_time=0.001, )
-    pidy = PID(1.22, 0.12, 0.0, setpoint=0, sample_time=0.001, )
-    pidx.output_limits = (-4000, 4000)
-    pidy.output_limits = (-3000, 3000)
-
     last = None
     while True:
 
@@ -366,7 +352,7 @@ def consumer(data, queue):
                     sx, sy = sc  # 目标所在点
                     # 考虑AD偏移
                     if data[ad]:
-                        shift = gr[2] // 2
+                        shift = gr[2] // 3
                         if data[a] and data[d]:
                             sx = sx
                         elif data[a] and not data[d]:
@@ -392,15 +378,12 @@ def consumer(data, queue):
                     # py = int(pidy(ay))
                     px = int(ax)
                     py = int(ay)
-                    print(f'目标位置:{sx},{sy}, 移动像素:{x},{y}, ADS:{ax},{ay}, PID:{px},{py}')
+                    print(f'目标位置:{sx},{sy}, 移动像素:{x},{y}, ADS:{ax},{ay}')
                     # 移动
                     if data[emulation]:
                         mxy(10, px, py)
                     else:
                         move(px, py)
-        # pid 不知道干什么, 感觉像是重置之类的意思
-        pidx(0)
-        pidy(0)
         # 检测显示开关
         if data[box]:
             if img is None:
