@@ -36,7 +36,7 @@ init = {
     horizontal: 0.5,  # 水平方向的额外 ADS, 该类值小一点有利于防止被别人识破 AI
     vertical: 0.5,  # 垂直方向的额外 ADS, 该类值小一点有利于防止被别人识破 AI
     radius: 100,  # 瞄准生效半径, 目标瞄点出现在以准星为圆心该值为半径的圆的范围内时才会自动瞄准
-    weights: 'weights.for.apex.dummy.engine',  # 权重文件 weights.for.apex.engine weights.for.apex.dummy.engine
+    weights: 'weights.apex.public.dummy.engine',  # 权重文件 weights.for.apex.engine weights.for.apex.dummy.engine
     confidence: 0.5,  # 置信度, 低于该值的认为是干扰
     size: 400,  # 截图的尺寸, 屏幕中心 size*size 大小
     center: None,  # 屏幕中心点
@@ -44,12 +44,12 @@ init = {
     end: False,  # 退出标记, End
     box: False,  # 显示开关, Up
     show: False,  # 显示状态
-    aim: False,  # 瞄准开关, Down, X2(侧上键)
+    aim: True,  # 瞄准开关, Down, X2(侧上键)
     lock: False,  # 锁定状态(开火/预瞄)
     timestamp: None,  # 开火时间
     head: False,  # 是否瞄头, Right
     predict: False,  # 是否预瞄, Left
-    emulation: True,  # 是否仿真(减小力度加随机值), PageDown
+    emulation: False,  # 是否仿真(减小力度加随机值), PageDown
     randomness: False,  # 仿真时是否随机左右偏移, PageUp
 }
 
@@ -224,9 +224,6 @@ def a(data, qa):  # 瞄准进程
                     index = i
                     minimum = distance
         return targets[index]
-
-    pidx = PID(1, 0, 0, setpoint=0, sample_time=0.001)
-    pidx.output_limits = (-100, 100)
 
     title = 'Realtime ScreenGrab Detect'
 
