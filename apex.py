@@ -37,7 +37,7 @@ confidence = 'confidence'
 randomness = 'randomness'
 
 init = {
-    weights: 'weights.apex.public.dummy.engine',  # 权重文件, weights.apex.public.dummy.engine, weights.apex.public.engine, weights.apex.private.crony.1435244588.1127E7B7107206013DE38A10EDDEEEB3-v5-n-416-50000-3-0.1.2.engine
+    weights: 'weights.apex.private.crony.1435244588.1127E7B7107206013DE38A10EDDEEEB3-v5-n-416-50000-3-0.1.2.engine',  # 权重文件, weights.apex.public.dummy.engine, weights.apex.public.engine, weights.apex.private.crony.1435244588.1127E7B7107206013DE38A10EDDEEEB3-v5-n-416-50000-3-0.1.2.engine
     classes: 0,  # 要检测的标签的序号(标签序号从0开始), 多个时如右 [0, 1]
     confidence: 0.5,  # 置信度, 低于该值的认为是干扰
     size: 400,  # 截图的尺寸, 屏幕中心 size*size 大小
@@ -378,7 +378,7 @@ def consumer(data, queue):
                     # py = int(pidy(ay))
                     px = int(ax)
                     py = int(ay)
-                    print(f'目标位置:{sx},{sy}, 移动像素:{x},{y}, ADS:{ax},{ay}')
+                    # print(f'目标位置:{sx},{sy}, 移动像素:{x},{y}, ADS:{ax},{ay}')
                     # 移动
                     if data[emulation]:
                         mxy(10, px, py)
