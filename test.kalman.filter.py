@@ -30,7 +30,7 @@ while True:
 
     cv2.namedWindow(title, cv2.WINDOW_AUTOSIZE)
     cv2.imshow(title, img)
-    k = cv2.waitKey(1000)
+    k = cv2.waitKey(500)
     if k % 256 == 27:
         cv2.destroyAllWindows()
         exit('ESC ...')
