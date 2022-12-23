@@ -194,7 +194,66 @@ class Detector:
         self.model.warmup(imgsz=(1 if self.pt else bs, 3, *self.imgsz))  # warmup
 
     @smart_inference_mode()
-    def detect(self, region, image=False, label=True, confidence=True):
+    def detect(self, image, show=False, label=True, confidence=True):
+        img0 = image
+        t1 = time.perf_counter_ns()
+        aims = []
+        im = letterbox(img0, self.imgsz, stride=self.stride, auto=self.pt)[0]
+        im = im.transpose((2, 0, 1))[::-1]  # HWC to CHW, BGR to RGB
+        im = np.ascontiguousarray(im)
+        im = torch.from_numpy(im).to(self.device)
+        im = im.half() if self.model.fp16 else im.float()  # uint8 to fp16/32
+        im /= 255  # 0 - 255 to 0.0 - 1.0
+        if len(im.shape) == 3:
+            im = im[None]  # expand for batch dim
+        # Inference
+        # visualize = increment_path(save_dir / Path(path).stem, mkdir=True) if visualize else False
+        pred = self.model(im, augment=self.augment, visualize=self.visualize)
+        pred = non_max_suppression(pred, self.conf_thres, self.iou_thres, self.classes, self.agnostic_nms, max_det=self.max_det)
+        det = pred[0]
+        annotator = None
+        if show:
+            annotator = Annotator(img0, line_width=self.line_thickness, example=str(self.names))
+        if len(det):
+            im0 = img0
+            self.names = self.model.module.names if hasattr(self.model, 'module') else self.model.names  # get class names
+            det[:, :4] = scale_coords(im.shape[2:], det[:, :4], im0.shape).round()
+            for *xyxy, conf, cls in reversed(det):
+                c = int(cls)  # integer class
+                clazz = self.names[c] if not self.weights.endswith('.engine') else str(c)  # 类别
+                aims.append((c, clazz, float(conf), xyxy))  # 类别索引, 类别名称, 置信度, xyxy
+                if show:
+                    label2 = (f'{c}:{clazz} {conf:.2f}' if confidence else f'{clazz}') if label else None
+                    annotator.box_label(xyxy, label2, color=colors(0, True))
+        # print(f'检测:{Timer.cost(time.perf_counter_ns() - t1)}, 数量:{len(aims)}/{len(det)}')
+        return aims, annotator.result() if show else None
+
+    def convert(self, aims, region):
+        """
+        将截屏坐标系下的 xyxy 转换为 屏幕坐标下下的 ltwhxy 和 截屏坐标系下的 ltwhxy
+        """
+        lst = []
+        for item in aims:
+            c, clazz, conf, xyxy = item
+            # 屏幕坐标系下, 框的 ltwh 和 框的中心点 xy
+            sl = int(region[0] + xyxy[0])
+            st = int(region[1] + xyxy[1])
+            sw = int(xyxy[2] - xyxy[0])
+            sh = int(xyxy[3] - xyxy[1])
+            sx = int(sl + sw / 2)
+            sy = int(st + sh / 2)
+            # 截图坐标系下, 框的 ltwh 和 框的中心点 xy
+            gl = int(xyxy[0])
+            gt = int(xyxy[1])
+            gw = int(xyxy[2] - xyxy[0])
+            gh = int(xyxy[3] - xyxy[1])
+            gx = int((xyxy[0] + xyxy[2]) / 2)
+            gy = int((xyxy[1] + xyxy[3]) / 2)
+            lst.append((c, clazz, float(conf), (sx, sy), (gx, gy), (sl, st, sw, sh), (gl, gt, gw, gh)))
+        return lst
+
+    @smart_inference_mode()
+    def backup(self, region, show=False, label=True, confidence=True):
         # 截图和转换
         t1 = time.perf_counter_ns()
         # 截屏范围 region = (left, top, width, height)
@@ -216,7 +275,7 @@ class Detector:
         pred = non_max_suppression(pred, self.conf_thres, self.iou_thres, self.classes, self.agnostic_nms, max_det=self.max_det)
         det = pred[0]
         annotator = None
-        if image:
+        if show:
             annotator = Annotator(img0, line_width=self.line_thickness, example=str(self.names))
         if len(det):
             im0 = img0
@@ -241,7 +300,7 @@ class Detector:
                 gy = int((xyxy[1] + xyxy[3]) / 2)
                 # confidence 置信度
                 aims.append((c, clazz, float(conf), (sx, sy), (gx, gy), (sl, st, sw, sh), (gl, gt, gw, gh)))
-                if image:
+                if show:
                     label2 = (f'{c}:{clazz} {conf:.2f}' if confidence else f'{clazz}') if label else None
                     annotator.box_label(xyxy, label2, color=colors(0, True))
                     # 下面是自己写的给框中心画点, 在 Annotator 类所在的 plots.py 中的 box_label 方法下添加如下方法
@@ -256,7 +315,7 @@ class Detector:
                     """
         t3 = time.perf_counter_ns()
         # print(f'截图:{Timer.cost(t2 - t1)}, 检测:{Timer.cost(t3 - t2)}, 总计:{Timer.cost(t3 - t1)}, 数量:{len(aims)}/{len(det)}')
-        return aims, annotator.result() if image else None
+        return aims, annotator.result() if show else None
 
     @smart_inference_mode()
     def label(self, path):

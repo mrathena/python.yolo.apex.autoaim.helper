@@ -120,7 +120,7 @@ def producer(data, queue):
             break
         if data[box] or data[aim]:
             begin = time.perf_counter_ns()
-            aims, img = detector.detect(region=data[region], classes=heads.union(bodies), image=data[box], label=False)
+            aims, img = detector.detect(region=data[region], classes=heads.union(bodies), show=data[box], label=False)
             if data[box]:
                 cv2.putText(img, f'{Timer.cost(time.perf_counter_ns() - begin)}', (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.75, (255, 255, 255), 1)
             try:

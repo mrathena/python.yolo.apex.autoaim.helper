@@ -37,7 +37,7 @@ confidence = 'confidence'
 randomness = 'randomness'
 
 init = {
-    weights: 'weights.apex.private.crony.1435244588.1127E7B7107206013DE38A10EDDEEEB3-v5-n-416-50000-3-0.1.2.engine',  # 权重文件, weights.apex.public.dummy.engine, weights.apex.public.engine, weights.apex.private.crony.1435244588.1127E7B7107206013DE38A10EDDEEEB3-v5-n-416-50000-3-0.1.2.engine
+    weights: 'weights.apex.public.dummy.engine',  # 权重文件, weights.apex.public.dummy.engine, weights.apex.public.engine, weights.apex.private.crony.1435244588.1127E7B7107206013DE38A10EDDEEEB3-v5-n-416-50000-3-0.1.2.engine
     classes: 0,  # 要检测的标签的序号(标签序号从0开始), 多个时如右 [0, 1]
     confidence: 0.5,  # 置信度, 低于该值的认为是干扰
     size: 400,  # 截图的尺寸, 屏幕中心 size*size 大小
@@ -64,8 +64,8 @@ init = {
 
 
 def game():
-    # return 'Apex Legends' in GetWindowText(GetForegroundWindow())
-    return True
+    return 'Apex Legends' in GetWindowText(GetForegroundWindow())
+    # return True
 
 
 def mouse(data):
@@ -140,7 +140,7 @@ def keyboard(data):
 
 def producer(data, queue):
 
-    from toolkit import Detector, Timer
+    from toolkit import Capturer, Detector, Timer
     detector = Detector(data[weights], data[classes], data[confidence])
     winsound.Beep(800, 200)
 
@@ -150,7 +150,9 @@ def producer(data, queue):
             break
         if data[box] or data[aim]:
             begin = time.perf_counter_ns()
-            aims, img = detector.detect(region=data[region], image=data[box], label=True, confidence=True)
+            img = Capturer.grab(win=True, region=data[region], convert=True)
+            aims, img = detector.detect(image=img, show=data[box])
+            aims = detector.convert(aims=aims, region=data[region])
             if data[box]:
                 cv2.putText(img, f'{Timer.cost(time.perf_counter_ns() - begin)}', (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.75, (255, 255, 255), 1)
             try:

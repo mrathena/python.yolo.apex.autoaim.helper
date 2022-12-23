@@ -13,7 +13,7 @@ detector = Detector(weight)
 title = 'Realtime ScreenGrab Detect'
 while True:
 
-    _, img = detector.detect(region=region, image=True, label=True, confidence=True)
+    _, img = detector.detect(region=region, show=True, label=True, confidence=True)
     cv2.namedWindow(title, cv2.WINDOW_AUTOSIZE)
     cv2.imshow(title, img)
     SetWindowPos(FindWindow(None, title), HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE)
