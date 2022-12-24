@@ -7,7 +7,7 @@ from win32gui import FindWindow, SetWindowPos
 from toolkit import Capturer, Detector, Timer
 
 region = (3440 // 5 * 2, 1440 // 3, 3440 // 5, 1440 // 3)
-weight = 'weights.apex.private.crony.1435244588.1127E7B7107206013DE38A10EDDEEEB3-v5-n-416-50000-3-0.1.2.engine'
+weight = 'weights.apex.public.dummy.engine'
 detector = Detector(weight)
 
 title = 'Realtime ScreenGrab Detect'
