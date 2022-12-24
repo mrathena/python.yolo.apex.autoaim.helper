@@ -10,7 +10,6 @@ import pynput
 from win32gui import GetCursorPos, FindWindow, SetWindowPos, GetWindowText, GetForegroundWindow
 from win32con import HWND_TOPMOST, SWP_NOMOVE, SWP_NOSIZE
 import winsound
-from simple_pid import PID  # pip install simple-pid
 
 a = 'a'
 d = 'd'
@@ -160,7 +159,7 @@ def producer(data, queue):
             except Full:
                 print(f'Producer: Queue Full')
             except:
-                print('Process Producer Error')
+                print('Producer Error')
 
 
 def consumer(data, queue):
@@ -172,7 +171,9 @@ def consumer(data, queue):
     predictor = Predictor()
 
     try:
-        driver = ctypes.CDLL('logitech.driver.dll')
+        import os
+        root = os.path.abspath(os.path.dirname(__file__))
+        driver = ctypes.CDLL(f'{root}/logitech.driver.dll')
         ok = driver.device_open() == 1
         if not ok:
             print('初始化失败, 未安装罗技驱动')
@@ -309,7 +310,7 @@ def consumer(data, queue):
         except Empty:
             print(f'Consumer: Queue Empty')
         except:
-            print('Process Consumer Error')
+            print('Consumer Error')
         if not product:
             continue
         aims, img = product
