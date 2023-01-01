@@ -52,6 +52,8 @@ class Logitech:
         @staticmethod
         def move(x, y):
             """
+            相对移动, 绝对移动需配合 pywin32 的 win32gui 中的 GetCursorPos 计算位置
+            pip install pywin32 -i https://pypi.tuna.tsinghua.edu.cn/simple
             x: 水平移动的方向和距离, 正数向右, 负数向左
             y: 垂直移动的方向和距离
             """
