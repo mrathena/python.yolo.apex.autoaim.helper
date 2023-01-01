@@ -90,13 +90,21 @@
 
 # 扩展
 
-## Python Apex 武器自动识别与压枪
+## Python 武器自动识别与压枪
 
 > [GitHub python.apex.weapon.auto.recognize.and.suppress](https://github.com/mrathena/python.apex.weapon.auto.recognize.and.suppress)
-> 
-## Python Pubg 武器自动识别与压枪
 
 > [GitHub python.pubg.weapon.auto.recognize.and.suppress](https://github.com/mrathena/python.pubg.weapon.auto.recognize.and.suppress)
+
+## Python YOLO AI 目标检测与自瞄
+
+> [CSDN Python Apex YOLO V5 6.2 目标检测与自瞄 全过程记录](https://blog.csdn.net/mrathena/article/details/126860226)
+
+> [GitHub python.yolo.apex.autoaim.helper](https://github.com/mrathena/python.yolo.apex.autoaim.helper)
+
+因为没有计算机视觉相关方向的专业知识, 所以做出来的东西, 有一定效果, 但是还有很多不足
+
+不同的游戏, 都需要准备大量精准的数据集做训练, 才能取得比较好的效果
 
 # 拓展 通用型人体骨骼检测 与 自瞄, 训练一次, FPS 游戏通用
 
