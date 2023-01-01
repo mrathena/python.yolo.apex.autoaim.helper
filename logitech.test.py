@@ -1,8 +1,7 @@
 import ctypes
 import os
-
 import pynput
-from win32gui import GetCursorPos
+import winsound
 
 try:
     root = os.path.abspath(os.path.dirname(__file__))
@@ -10,8 +9,8 @@ try:
     ok = driver.device_open() == 1  # 该驱动每个进程可打开一个实例
     if not ok:
         print('Error, GHUB or LGS driver not found')
-except FileNotFoundError as e:
-    print(f'Error, DLL file not found. {e}')
+except FileNotFoundError:
+    print(f'Error, DLL file not found')
 
 
 class Logitech:
@@ -51,22 +50,16 @@ class Logitech:
             driver.scroll(a)
 
         @staticmethod
-        def move(x, y, absolute=False):
+        def move(x, y):
             """
             x: 水平移动的方向和距离, 正数向右, 负数向左
             y: 垂直移动的方向和距离
-            absolute: 是否绝对移动, 是:跳到水平x和垂直y的位置, 否:水平跳x距离垂直跳y距离
             """
             if not ok:
                 return
             if x == 0 and y == 0:
                 return
-            mx, my = x, y
-            if absolute:
-                ox, oy = GetCursorPos()
-                mx = x - ox
-                my = y - oy
-            driver.moveR(mx, my, True)
+            driver.moveR(x, y, True)
 
     class keyboard:
 
@@ -98,13 +91,15 @@ class Logitech:
 
 if __name__ == '__main__':  # 测试
 
-    def click(x, y, button, pressed):
-        if not pressed:
-            if pynput.mouse.Button.x2 == button:  # 侧上键
-                return False
-            elif pynput.mouse.Button.x1 == button:  # 侧下键
-                Logitech.mouse.move(100, 100)
+    winsound.Beep(800, 200)
 
-    listener = pynput.mouse.Listener(on_click=click)
-    listener.start()
-    listener.join()
+    def release(key):
+        if key == pynput.keyboard.Key.end:  # 结束程序 End 键
+            winsound.Beep(400, 200)
+            return False
+        elif key == pynput.keyboard.Key.home:  # 移动鼠标 Home 键
+            winsound.Beep(600, 200)
+            Logitech.mouse.move(100, 100)
+
+    with pynput.keyboard.Listener(on_release=release) as k:
+        k.join()
