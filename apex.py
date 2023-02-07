@@ -33,7 +33,7 @@ confidence = 'confidence'
 
 init = {
     title: 'Apex Legends',
-    weights: 'weights.apex.public.dummy.engine',  # 权重文件, weights.apex.public.dummy.engine, weights.apex.public.engine, weights.apex.private.crony.1435244588.1127E7B7107206013DE38A10EDDEEEB3-v5-n-416-50000-3-0.1.2.engine
+    weights: 'weights.apex.private.crony.1435244588.1127E7B7107206013DE38A10EDDEEEB3-v5-n-416-50000-3-0.1.2.engine',  # 权重文件, weights.apex.public.dummy.engine, weights.apex.public.engine, weights.apex.private.crony.1435244588.1127E7B7107206013DE38A10EDDEEEB3-v5-n-416-50000-3-0.1.2.engine
     classes: 0,  # 要检测的标签的序号(标签序号从0开始), 多个时如右 [0, 1]
     confidence: 0.5,  # 置信度, 低于该值的认为是干扰
     size: 400,  # 截图的尺寸, 屏幕中心 size*size 大小
@@ -144,8 +144,8 @@ def producer(data, queue):
             # print(f'{Timer.cost(t3 - t1)}, {Timer.cost(t2 - t1)}, {Timer.cost(t3 - t2)}')
             if data[box]:
                 cv2.putText(img, f'{Timer.cost(t3 - t1)}', (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.75, (255, 255, 255), 1)
-                cv2.putText(img, f'{Timer.cost(t2 - t1)}', (150, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.75, (255, 255, 255), 1)
-                cv2.putText(img, f'{Timer.cost(t3 - t2)}', (290, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.75, (255, 255, 255), 1)
+                cv2.putText(img, f'{Timer.cost(t2 - t1)}', (10, 50), cv2.FONT_HERSHEY_SIMPLEX, 0.75, (255, 255, 255), 1)
+                cv2.putText(img, f'{Timer.cost(t3 - t2)}', (10, 70), cv2.FONT_HERSHEY_SIMPLEX, 0.75, (255, 255, 255), 1)
             try:
                 product = (aims, img)
                 queue.put(product, block=True, timeout=1)
