@@ -18,28 +18,28 @@ show = 'show'
 head = 'head'
 lock = 'lock'
 size = 'size'
+title = 'title'
 region = 'region'
 center = 'center'
 radius = 'radius'
 weights = 'weights'
 classes = 'classes'
 predict = 'predict'
-vertical = 'vertical'
 timestamp = 'timestamp'
-horizontal = 'horizontal'
 confidence = 'confidence'
 
 init = {
+    title: 'Apex Legends',
     weights: 'weights.apex.private.crony.1435244588.1127E7B7107206013DE38A10EDDEEEB3-v5-n-416-50000-3-0.1.2.engine',  # 权重文件, weights.apex.public.dummy.engine, weights.apex.public.engine, weights.apex.private.crony.1435244588.1127E7B7107206013DE38A10EDDEEEB3-v5-n-416-50000-3-0.1.2.engine
     classes: 0,  # 要检测的标签的序号(标签序号从0开始), 多个时如右 [0, 1]
-    confidence: 0.5,  # 置信度, 低于该值的认为是干扰
-    size: 320,  # 截图的尺寸, 屏幕中心 size*size 大小
-    radius: 50,  # 瞄准生效半径, 目标瞄点出现在以准星为圆心该值为半径的圆的范围内时才会自动瞄准
+    confidence: 0.7,  # 置信度, 低于该值的认为是干扰
+    size: 640,  # 截图的尺寸, 屏幕中心 size*size 大小
+    radius: 320,  # 瞄准生效半径, 目标瞄点出现在以准星为圆心该值为半径的圆的范围内时才会自动瞄准
     ads: 1,  # 移动倍数, 调整方式: 关闭仿真并开启自瞄后, 不断瞄准目标旁边并按住 F 键, 当准星移动稳定且精准快速不振荡时, 就找到了合适的 ADS 值
     center: None,  # 屏幕中心点
     region: None,  # 截图范围
     end: False,  # 退出标记, End
-    box: False,  # 显示开关, Up
+    box: True,  # 显示开关, Up
     show: False,  # 显示状态
     aim: True,  # 瞄准开关, Down, X2(侧上键)
     lock: False,  # 锁定状态(开火/预瞄)
@@ -50,8 +50,15 @@ init = {
 
 
 def game():
-    return 'Apex Legends' in GetWindowText(GetForegroundWindow())
-    # return True
+    return init[title] in GetWindowText(GetForegroundWindow())
+
+
+def initializer(data):
+
+    from toolkit import Monitor
+    data[center] = Monitor.resolution.center()
+    c1, c2 = data[center]
+    data[region] = c1 - data[size] // 2, c2 - data[size] // 2, data[size], data[size]
 
 
 def mouse(data):
@@ -110,7 +117,8 @@ def keyboard(data):
 def producer(data, queue):
 
     from toolkit import Capturer, Detector, Timer
-    detector = Detector(data[weights], data[classes], data[confidence])
+    capturer = Capturer(data[title], data[region])
+    detector = Detector(data[weights], data[classes])
     winsound.Beep(800, 200)
 
     while True:
@@ -118,12 +126,16 @@ def producer(data, queue):
         if data[end]:
             break
         if data[box] or data[aim]:
-            begin = time.perf_counter_ns()
-            img = Capturer.grab(win=True, region=data[region], convert=True)
+            t1 = time.perf_counter_ns()
+            img = capturer.grab()
+            t2 = time.perf_counter_ns()
             aims, img = detector.detect(image=img, show=data[box])  # 目标检测, 得到截图坐标系内识别到的目标和标注好的图片(无需展示图片时img为none)
+            t3 = time.perf_counter_ns()
             aims = detector.convert(aims=aims, region=data[region])   # 将截图坐标系转换为屏幕坐标系
             if data[box]:
-                cv2.putText(img, f'{Timer.cost(time.perf_counter_ns() - begin)}', (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.75, (255, 255, 255), 1)
+                cv2.putText(img, f'{Timer.cost(t3 - t1)}', (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.75, (255, 255, 255), 1)
+                cv2.putText(img, f'{Timer.cost(t2 - t1)}', (150, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.75, (255, 255, 255), 1)
+                cv2.putText(img, f'{Timer.cost(t3 - t2)}', (290, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.75, (255, 255, 255), 1)
             try:
                 product = (aims, img)
                 queue.put(product, block=True, timeout=1)
@@ -135,10 +147,7 @@ def producer(data, queue):
 
 def consumer(data, queue):
 
-    from toolkit import Monitor, Predictor
-    data[center] = Monitor.resolution.center()
-    c1, c2 = data[center]
-    data[region] = c1 - data[size] // 2, c2 - data[size] // 2, data[size], data[size]
+    from toolkit import Predictor
     predictor = Predictor()
 
     try:
@@ -168,13 +177,20 @@ def consumer(data, queue):
         """
         从 targets 里选目标瞄点距离准星最近的
         """
+        if len(aims) == 0:
+            return None
+
         # 瞄点调整
         targets = []
         for index, clazz, conf, sc, gc, sr, gr in aims:
+            if conf < data[confidence]:  # 特意把置信度过滤放到这里(便于从图片中查看所有识别到的目标的置信度)
+                continue
             _, _, _, height = sr
             scx, scy = sc
             point = scx, scy - (height // 2 - height // (8 if data[head] else 3))  # 屏幕坐标系下各目标的瞄点坐标, 计算身体和头在方框中的大概位置来获得瞄点, 没有采用头标签的方式(感觉效果特别差)
             targets.append((point, gr))
+        if len(targets) == 0:
+            return None
 
         # 找到目标
         cx, cy = data[center]
@@ -194,7 +210,7 @@ def consumer(data, queue):
         return targets[index]
 
 
-    title = 'Realtime ScreenGrab Detect'
+    title = 'Realtime Screen Capture Detect'
 
     # 主循环
     while True:
@@ -219,9 +235,7 @@ def consumer(data, queue):
         img = None  # 展示的截图
         if product:
             aims, img = product
-            # 找到目标
-            if len(aims) > 0:
-                target = follow(aims)  # todo 尽量跟一个目标, 不要来回跳, 保证目标未检测到时能在原地停顿一会儿, 不直接跳到其他目标身上, 如目标长时间未被检测到, 才认为目标消失, 开始找下一个目标
+            target = follow(aims)  # todo 尽量跟一个目标, 不要来回跳, 保证目标未检测到时能在原地停顿一会儿, 不直接跳到其他目标身上, 如目标长时间未被检测到, 才认为目标消失, 开始找下一个目标
 
         # 预测目标
         predicted = None
@@ -242,7 +256,7 @@ def consumer(data, queue):
                     py2 = py1 + gh
                     cv2.rectangle(img, (px1, py1), (px2, py2), (0, 256, 0), 2)
                     top = 60
-                    cv2.putText(img, f'{scx - cx}, {scy - cy}', (10, top), cv2.FONT_HERSHEY_SIMPLEX, 0.75, (255, 255, 255), 1)
+                    cv2.putText(img, f'{px - cx}, {px - scx}', (10, top), cv2.FONT_HERSHEY_SIMPLEX, 0.75, (255, 255, 255), 1)
                     cv2.putText(img, f'{px - cx}, {py - cy}', (10, top + 20), cv2.FONT_HERSHEY_SIMPLEX, 0.75, (255, 255, 255), 1)
                     cv2.putText(img, f'{scx - cx + px - cx}, {scy - cy + py - cy}', (10, top + 40), cv2.FONT_HERSHEY_SIMPLEX, 0.75, (255, 255, 255), 1)
 
@@ -267,8 +281,14 @@ def consumer(data, queue):
                 # 考虑目标预测
                 px, py = predicted  # 目标将在点
                 if data[predict]:
-                    x = scx - cx + px - cx
-                    y = scy - cy + py - cy
+                    if scx - cx < 50:
+                        x = scx - cx + (px - scx) * 2
+                        y = scy - cy + (py - scy) * 2
+                    else:
+                        x = scx - cx
+                        y = scy - cy
+                    x = scx - cx + (px - scx)
+                    y = scy - cy + (py - scy)
                 else:
                     x = scx - cx
                     y = scy - cy
@@ -281,15 +301,18 @@ def consumer(data, queue):
 
 
 if __name__ == '__main__':
-    multiprocessing.freeze_support()  # windows 平台使用 multiprocessing 必须在 main 中第一行写这个
+    multiprocessing.freeze_support()
     manager = multiprocessing.Manager()
     queue = manager.Queue(maxsize=1)
     data = manager.dict()
     data.update(init)
+    pi = Process(target=initializer, args=(data,), name='Initializer')
     pm = Process(target=mouse, args=(data,), name='Mouse')
     pk = Process(target=keyboard, args=(data,), name='Keyboard')
     pp = Process(target=producer, args=(data, queue,), name='Producer')
     pc = Process(target=consumer, args=(data, queue,), name='Consumer')
+    pi.start()
+    pi.join()  # 初始化进程优先执行
     pm.start()
     pk.start()
     pp.start()

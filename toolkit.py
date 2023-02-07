@@ -2,12 +2,11 @@ import os.path
 import time
 
 import cv2
-import mss
 import numpy as np
 import torch
 from win32api import GetSystemMetrics
 from win32con import SRCCOPY, SM_CXSCREEN, SM_CYSCREEN, DESKTOPHORZRES, DESKTOPVERTRES
-from win32gui import GetDesktopWindow, GetWindowDC, DeleteObject, GetDC, ReleaseDC
+from win32gui import GetDesktopWindow, GetWindowDC, DeleteObject, GetDC, ReleaseDC, EnumWindows, GetWindowText
 from win32ui import CreateDCFromHandle, CreateBitmap
 from win32print import GetDeviceCaps
 
@@ -20,14 +19,72 @@ from utils.torch_utils import select_device, smart_inference_mode
 
 class Capturer:
 
-    @staticmethod
-    def grabWithWin(region):
+    def __init__(self, title: str, region: tuple):
         """
         region: tuple, (left, top, width, height)
-        conda install pywin32, 用 pip 装的一直无法导入 win32ui 模块, 找遍各种办法都没用, 用 conda 装的一次成功
+        """
+        # 找到窗体
+        windowNotFoundMessage = f'Window [{title}] not found, capturer instance initialize failure'
+        windowNotExplicitMessage = f'Window [{title}] not explicit, more than one window found, capturer instance initialize failure'
+        """
+        # 方式一, 需要完整窗体标题
+        windowHandle = FindWindow(None, title)
+        if 0 == windowHandle:
+            raise Exception(windowNotFoundMessage)
+        self.windowHandle = windowHandle
+        """
+        # 方式二, 需要部分窗体标题
+        windowHandleList = []
+        EnumWindows(lambda hwnd, param: param.append(hwnd), windowHandleList)
+        filteredWindowHandleList = []
+        for hwnd in windowHandleList:
+            if title in GetWindowText(hwnd):
+                filteredWindowHandleList.append(hwnd)
+        size = len(filteredWindowHandleList)
+        if size == 0:
+            raise Exception(windowNotFoundMessage)
+        elif size > 1:
+            message = windowNotExplicitMessage
+            for i, hwnd in enumerate(filteredWindowHandleList):
+                message += f'\r\n\t{i + 1}: {hwnd}, ' + GetWindowText(hwnd)
+            raise Exception(message)
+        self.windowHandle = filteredWindowHandleList[0]
+        # 初始化
+        self.region = region
+        left, top, width, height = region
+        self.windowDCHandle = GetWindowDC(self.windowHandle)
+        self.sourceDCHandle = CreateDCFromHandle(self.windowDCHandle)
+        self.memoryDCHandle = self.sourceDCHandle.CreateCompatibleDC()
+        self.bmp = CreateBitmap()
+        self.bmp.CreateCompatibleBitmap(self.sourceDCHandle, width, height)
+        self.memoryDCHandle.SelectObject(self.bmp)
+        # 初始化完成
+        self.initialized = True
+
+    def __del__(self):
+        if hasattr(self, 'initialized'):
+            DeleteObject(self.bmp.GetHandle())
+            self.memoryDCHandle.DeleteDC()
+            self.sourceDCHandle.DeleteDC()
+            ReleaseDC(self.windowHandle, self.windowDCHandle)
+
+    def grab(self):
+        left, top, width, height = self.region
+        self.memoryDCHandle.BitBlt((0, 0), (width, height), self.sourceDCHandle, (left, top), SRCCOPY)
+        array = self.bmp.GetBitmapBits(True)
+        image = np.frombuffer(array, dtype='uint8')
+        image.shape = (height, width, 4)
+        image = cv2.cvtColor(image, cv2.COLOR_BGRA2BGR)
+        return image
+
+    @staticmethod
+    def backup(region):
+        """
+        region: tuple, (left, top, width, height)
         """
         left, top, width, height = region
         hWin = GetDesktopWindow()
+        # hWin = FindWindow(完整类名, 完整窗体标题名)
         hWinDC = GetWindowDC(hWin)
         srcDC = CreateDCFromHandle(hWinDC)
         memDC = srcDC.CreateCompatibleDC()
@@ -42,49 +99,6 @@ class Capturer:
         ReleaseDC(hWin, hWinDC)
         img = np.frombuffer(array, dtype='uint8')
         img.shape = (height, width, 4)
-        return img
-
-    @staticmethod
-    def getMssInstance():
-        return mss.mss()
-
-    @staticmethod
-    def grabWithMss(instance, region):
-        """
-        region: tuple, (left, top, width, height)
-        pip install mss
-        """
-        left, top, width, height = region
-        return instance.grab(monitor={'left': left, 'top': top, 'width': width, 'height': height})
-
-    @staticmethod
-    def grab(win=False, mss=False, instance=None, region=None, convert=False):
-        """
-        win:
-            region: tuple, (left, top, width, height)
-        mss:
-            instance: mss instance
-            region: tuple, (left, top, width, height)
-        convert: 是否转换为 opencv 需要的 numpy BGR 格式, 转换结果可直接用于 opencv
-        """
-        # 补全范围
-        if not region:
-            w, h = Monitor.resolution.real()
-            region = w // 5 * 2, h // 3, w // 5, h // 3
-        # 范围截图
-        if win:
-            img = Capturer.grabWithWin(region)
-        elif mss:
-            img = Capturer.grabWithMss(instance, region)
-        else:
-            win = True
-            img = Capturer.grabWithWin(region)
-        # 图片转换
-        if convert:
-            if win:
-                img = cv2.cvtColor(img, cv2.COLOR_BGRA2BGR)
-            elif mss:
-                img = cv2.cvtColor(np.array(img), cv2.COLOR_BGRA2BGR)
         return img
 
 
@@ -156,12 +170,12 @@ class Predictor:
 class Detector:
 
     @smart_inference_mode()
-    def __init__(self, weights, classes=None, confidence=0.25):
+    def __init__(self, weights, classes=None):
         self.weights = weights
         self.source = 'data/images'  # file/dir/URL/glob, 0 for webcam
         self.data = 'data/coco128.yaml'  # dataset.yaml path
         self.imgsz = (640, 640)  # inference size (height, width)
-        self.conf_thres = confidence  # confidence threshold
+        self.conf_thres = 0.25  # confidence threshold
         self.iou_thres = 0  # NMS IOU threshold
         self.max_det = 1000  # maximum detections per image
         self.device = ''  # cuda device, i.e. 0 or 0,1,2,3 or cpu
@@ -194,9 +208,9 @@ class Detector:
         self.model.warmup(imgsz=(1 if self.pt else bs, 3, *self.imgsz))  # warmup
 
     @smart_inference_mode()
-    def detect(self, image, show=False, label=True, confidence=True):
+    def detect(self, image, show=False):
         img0 = image
-        t1 = time.perf_counter_ns()
+        # t1 = time.perf_counter_ns()
         aims = []
         im = letterbox(img0, self.imgsz, stride=self.stride, auto=self.pt)[0]
         im = im.transpose((2, 0, 1))[::-1]  # HWC to CHW, BGR to RGB
@@ -219,12 +233,14 @@ class Detector:
             self.names = self.model.module.names if hasattr(self.model, 'module') else self.model.names  # get class names
             det[:, :4] = scale_coords(im.shape[2:], det[:, :4], im0.shape).round()
             for *xyxy, conf, cls in reversed(det):
+                # if conf < confidence:
+                #     continue
                 c = int(cls)  # integer class
                 clazz = self.names[c] if not self.weights.endswith('.engine') else str(c)  # 类别
                 aims.append((c, clazz, float(conf), xyxy))  # 类别索引, 类别名称, 置信度, xyxy
                 if show:
-                    label2 = (f'{c}:{clazz} {conf:.2f}' if confidence else f'{clazz}') if label else None
-                    annotator.box_label(xyxy, label2, color=colors(0, True))
+                    label = f'{c}:{clazz} {conf:.2f}'
+                    annotator.box_label(xyxy, label, color=colors(0, True))
         # print(f'检测:{Timer.cost(time.perf_counter_ns() - t1)}, 数量:{len(aims)}/{len(det)}')
         return aims, annotator.result() if show else None
 
