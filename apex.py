@@ -10,6 +10,9 @@ from win32gui import FindWindow, SetWindowPos, GetWindowText, GetForegroundWindo
 from win32con import HWND_TOPMOST, SWP_NOMOVE, SWP_NOSIZE
 import winsound
 
+a = 'a'
+d = 'd'
+ad = 'ad'
 ads = 'ads'
 end = 'end'
 box = 'box'
@@ -32,20 +35,23 @@ init = {
     title: 'Apex Legends',
     weights: 'weights.apex.private.crony.1435244588.1127E7B7107206013DE38A10EDDEEEB3-v5-n-416-50000-3-0.1.2.engine',  # 权重文件, weights.apex.public.dummy.engine, weights.apex.public.engine, weights.apex.private.crony.1435244588.1127E7B7107206013DE38A10EDDEEEB3-v5-n-416-50000-3-0.1.2.engine
     classes: 0,  # 要检测的标签的序号(标签序号从0开始), 多个时如右 [0, 1]
-    confidence: 0.7,  # 置信度, 低于该值的认为是干扰
-    size: 640,  # 截图的尺寸, 屏幕中心 size*size 大小
-    radius: 320,  # 瞄准生效半径, 目标瞄点出现在以准星为圆心该值为半径的圆的范围内时才会自动瞄准
-    ads: 1.2,  # 移动倍数, 调整方式: 关闭仿真并开启自瞄后, 不断瞄准目标旁边并按住 F 键, 当准星移动稳定且精准快速不振荡时, 就找到了合适的 ADS 值
+    confidence: 0.5,  # 置信度, 低于该值的认为是干扰
+    size: 400,  # 截图的尺寸, 屏幕中心 size*size 大小
+    radius: 200,  # 瞄准生效半径, 目标瞄点出现在以准星为圆心该值为半径的圆的范围内时才会自动瞄准
+    ads: 1,  # 移动倍数, 调整方式: 关闭仿真并开启自瞄后, 不断瞄准目标旁边并按住 F 键, 当准星移动稳定且精准快速不振荡时, 就找到了合适的 ADS 值
     center: None,  # 屏幕中心点
     region: None,  # 截图范围
     end: False,  # 退出标记, End
-    box: True,  # 显示开关, Up
+    box: False,  # 显示开关, Up
     show: False,  # 显示状态
     aim: True,  # 瞄准开关, Down, X2(侧上键)
     lock: False,  # 锁定状态(开火/预瞄)
     timestamp: None,  # 开火时间
     head: False,  # 是否瞄头, Right
-    predict: True,  # 是否预瞄, Left
+    predict: False,  # 是否预瞄, Left
+    ad: True,  # AD 模式开关, F11
+    a: False,  # A 键状态, 是否被按下
+    d: False,  # D 键状态, 是否被按下
 }
 
 
@@ -86,6 +92,10 @@ def keyboard(data):
             return
         if key == pynput.keyboard.KeyCode.from_char('f'):
             data[lock] = True
+        elif key == pynput.keyboard.KeyCode.from_char('a'):
+            data[a] = True
+        elif key == pynput.keyboard.KeyCode.from_char('d'):
+            data[d] = True
 
     def release(key):
         if key == pynput.keyboard.Key.end:
@@ -97,6 +107,13 @@ def keyboard(data):
             return
         if key == pynput.keyboard.KeyCode.from_char('f'):
             data[lock] = False
+        elif key == pynput.keyboard.KeyCode.from_char('a'):
+            data[a] = False
+        elif key == pynput.keyboard.KeyCode.from_char('d'):
+            data[d] = False
+        elif key == pynput.keyboard.Key.f11:
+            data[ad] = not data[ad]
+            winsound.Beep(800 if data[ad] else 400, 200)
         elif key == pynput.keyboard.Key.up:
             data[box] = not data[box]
             winsound.Beep(800 if data[box] else 400, 200)
@@ -132,6 +149,7 @@ def producer(data, queue):
             aims, img = detector.detect(image=img, show=data[box])  # 目标检测, 得到截图坐标系内识别到的目标和标注好的图片(无需展示图片时img为none)
             t3 = time.perf_counter_ns()
             aims = detector.convert(aims=aims, region=data[region])   # 将截图坐标系转换为屏幕坐标系
+            # print(f'{Timer.cost(t3 - t1)}, {Timer.cost(t2 - t1)}, {Timer.cost(t3 - t2)}')
             if data[box]:
                 cv2.putText(img, f'{Timer.cost(t3 - t1)}', (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.75, (255, 255, 255), 1)
                 cv2.putText(img, f'{Timer.cost(t2 - t1)}', (150, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.75, (255, 255, 255), 1)
@@ -241,34 +259,23 @@ def consumer(data, queue):
         if target:
             sc, gr = target
             predicted = predictor.predict(sc)
-            if data[box] and img is not None:
-                cx, cy = data[center]
-                scx, scy = sc  # 目标所在点
-                px, py = predicted  # 目标将在点
-                dx = px - scx
-                dy = py - scy
-                if abs(dx) > 0 or abs(dy) > 0:
-                    gl, gt, gw, gh = gr
-                    px1 = gl + dx * 3
-                    py1 = gt + dy * 3
-                    px2 = px1 + gw
-                    py2 = py1 + gh
-                    cv2.rectangle(img, (px1, py1), (px2, py2), (0, 256, 0), 2)
-                    top = 60
-                    cv2.putText(img, f'{px - cx}, {px - scx}', (10, top), cv2.FONT_HERSHEY_SIMPLEX, 0.75, (255, 255, 255), 1)
-                    cv2.putText(img, f'{px - cx}, {py - cy}', (10, top + 20), cv2.FONT_HERSHEY_SIMPLEX, 0.75, (255, 255, 255), 1)
-                    cv2.putText(img, f'{scx - cx + px - cx}, {scy - cy + py - cy}', (10, top + 40), cv2.FONT_HERSHEY_SIMPLEX, 0.75, (255, 255, 255), 1)
-
-        # 检测显示开关
-        if data[box] and img is not None:
-            data[show] = True
-            cv2.namedWindow(title, cv2.WINDOW_AUTOSIZE)
-            cv2.imshow(title, img)
-            SetWindowPos(FindWindow(None, title), HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE)
-            cv2.waitKey(1)
-        if not data[box] and data[show]:
-            data[show] = False
-            cv2.destroyAllWindows()
+            # if data[box] and img is not None:
+            #     cx, cy = data[center]
+            #     scx, scy = sc  # 目标所在点
+            #     px, py = predicted  # 目标将在点
+            #     dx = px - scx
+            #     dy = py - scy
+            #     if abs(dx) > 0 or abs(dy) > 0:
+            #         gl, gt, gw, gh = gr
+            #         px1 = gl + dx * 3
+            #         py1 = gt + dy * 3
+            #         px2 = px1 + gw
+            #         py2 = py1 + gh
+            #         cv2.rectangle(img, (px1, py1), (px2, py2), (0, 256, 0), 2)
+            #         top = 60
+            #         cv2.putText(img, f'{px - cx}, {px - scx}', (10, top), cv2.FONT_HERSHEY_SIMPLEX, 0.75, (255, 255, 255), 1)
+            #         cv2.putText(img, f'{px - cx}, {py - cy}', (10, top + 20), cv2.FONT_HERSHEY_SIMPLEX, 0.75, (255, 255, 255), 1)
+            #         cv2.putText(img, f'{scx - cx + px - cx}, {scy - cy + py - cy}', (10, top + 40), cv2.FONT_HERSHEY_SIMPLEX, 0.75, (255, 255, 255), 1)
 
         # 检测瞄准开关
         if data[aim] and data[lock] and target:  # 瞄准开关是打开的, 且处于目标锁定状态
@@ -287,6 +294,16 @@ def consumer(data, queue):
                         x = px - cx
                         y = py - cy
                 else:
+                    # 考虑AD偏移
+                    if data[ad]:
+                        shift = gr[2] // 2
+                        print(shift)
+                        if data[a] and data[d]:
+                            scx = scx
+                        elif data[a] and not data[d]:
+                            scx = scx + shift
+                        elif not data[a] and data[d]:
+                            scx = scx - shift
                     x = scx - cx
                     y = scy - cy
                 # 考虑倍数
@@ -295,6 +312,17 @@ def consumer(data, queue):
                 # print(f'目标位置:{sx},{sy}, 移动像素:{x},{y}, ADS:{ax},{ay}')
                 # 移动
                 move(ax, ay)
+
+        # 检测显示开关
+        if data[box] and img is not None:
+            data[show] = True
+            cv2.namedWindow(title, cv2.WINDOW_AUTOSIZE)
+            cv2.imshow(title, img)
+            SetWindowPos(FindWindow(None, title), HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE)
+            cv2.waitKey(1)
+        if not data[box] and data[show]:
+            data[show] = False
+            cv2.destroyAllWindows()
 
 
 if __name__ == '__main__':
