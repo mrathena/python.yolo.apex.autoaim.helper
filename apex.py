@@ -1,4 +1,5 @@
 import ctypes
+import math
 import multiprocessing
 import time
 from multiprocessing import Process
@@ -35,7 +36,7 @@ init = {
     confidence: 0.7,  # 置信度, 低于该值的认为是干扰
     size: 640,  # 截图的尺寸, 屏幕中心 size*size 大小
     radius: 320,  # 瞄准生效半径, 目标瞄点出现在以准星为圆心该值为半径的圆的范围内时才会自动瞄准
-    ads: 1,  # 移动倍数, 调整方式: 关闭仿真并开启自瞄后, 不断瞄准目标旁边并按住 F 键, 当准星移动稳定且精准快速不振荡时, 就找到了合适的 ADS 值
+    ads: 1.2,  # 移动倍数, 调整方式: 关闭仿真并开启自瞄后, 不断瞄准目标旁边并按住 F 键, 当准星移动稳定且精准快速不振荡时, 就找到了合适的 ADS 值
     center: None,  # 屏幕中心点
     region: None,  # 截图范围
     end: False,  # 退出标记, End
@@ -209,7 +210,6 @@ def consumer(data, queue):
                     minimum = distance
         return targets[index]
 
-
     title = 'Realtime Screen Capture Detect'
 
     # 主循环
@@ -281,14 +281,12 @@ def consumer(data, queue):
                 # 考虑目标预测
                 px, py = predicted  # 目标将在点
                 if data[predict]:
-                    if scx - cx < 50:
-                        x = scx - cx + (px - scx) * 2
-                        y = scy - cy + (py - scy) * 2
-                    else:
+                    if abs(px - scx) > 100:
                         x = scx - cx
                         y = scy - cy
-                    x = scx - cx + (px - scx)
-                    y = scy - cy + (py - scy)
+                    else:
+                        x = px - cx
+                        y = py - cy
                 else:
                     x = scx - cx
                     y = scy - cy
