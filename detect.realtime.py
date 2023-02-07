@@ -7,20 +7,20 @@ from win32gui import FindWindow, SetWindowPos
 from toolkit import Capturer, Detector, Timer
 
 region = (3440 // 5 * 2, 1440 // 3, 3440 // 5, 1440 // 3)
-weight = 'weights.apex.public.dummy.engine'
+weight = 'weights.apex.private.crony.1435244588.1127E7B7107206013DE38A10EDDEEEB3-v5-n-416-50000-3-0.1.2.engine'
 detector = Detector(weight)
 
-title = 'Realtime ScreenGrab Detect'
+title = 'Realtime Screen Capture Detect'
 while True:
 
     t1 = time.perf_counter_ns()
-    img = Capturer.grab(win=True, region=region, convert=True)
+    img = Capturer.backup(region)
     t2 = time.perf_counter_ns()
     _, img = detector.detect(image=img, show=True)
     t3 = time.perf_counter_ns()
-    cv2.putText(img, f'Capture: {Timer.cost(t2 - t1)}', (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.75, (255, 255, 255), 1)
-    cv2.putText(img, f'Detect: {Timer.cost(t3 - t2)}', (10, 60), cv2.FONT_HERSHEY_SIMPLEX, 0.75, (255, 255, 255), 1)
-    cv2.putText(img, f'Total: {Timer.cost(t3 - t1)}', (10, 90), cv2.FONT_HERSHEY_SIMPLEX, 0.75, (255, 255, 255), 1)
+    cv2.putText(img, f'{Timer.cost(t3 - t1)}', (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.75, (255, 255, 255), 1)
+    cv2.putText(img, f'{Timer.cost(t2 - t1)}', (150, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.75, (255, 255, 255), 1)
+    cv2.putText(img, f'{Timer.cost(t3 - t2)}', (290, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.75, (255, 255, 255), 1)
     cv2.namedWindow(title, cv2.WINDOW_AUTOSIZE)
     cv2.imshow(title, img)
     SetWindowPos(FindWindow(None, title), HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE)

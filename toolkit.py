@@ -99,6 +99,7 @@ class Capturer:
         ReleaseDC(hWin, hWinDC)
         img = np.frombuffer(array, dtype='uint8')
         img.shape = (height, width, 4)
+        img = cv2.cvtColor(img, cv2.COLOR_BGRA2BGR)
         return img
 
 
