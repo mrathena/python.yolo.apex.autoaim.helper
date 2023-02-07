@@ -33,7 +33,7 @@ confidence = 'confidence'
 
 init = {
     title: 'Apex Legends',
-    weights: 'weights.apex.private.crony.1435244588.1127E7B7107206013DE38A10EDDEEEB3-v5-n-416-50000-3-0.1.2.engine',  # 权重文件, weights.apex.public.dummy.engine, weights.apex.public.engine, weights.apex.private.crony.1435244588.1127E7B7107206013DE38A10EDDEEEB3-v5-n-416-50000-3-0.1.2.engine
+    weights: 'weights.apex.public.dummy.engine',  # 权重文件, weights.apex.public.dummy.engine, weights.apex.public.engine, weights.apex.private.crony.1435244588.1127E7B7107206013DE38A10EDDEEEB3-v5-n-416-50000-3-0.1.2.engine
     classes: 0,  # 要检测的标签的序号(标签序号从0开始), 多个时如右 [0, 1]
     confidence: 0.5,  # 置信度, 低于该值的认为是干扰
     size: 400,  # 截图的尺寸, 屏幕中心 size*size 大小
@@ -57,14 +57,6 @@ init = {
 
 def game():
     return init[title] in GetWindowText(GetForegroundWindow())
-
-
-def initializer(data):
-
-    from toolkit import Monitor
-    data[center] = Monitor.resolution.center()
-    c1, c2 = data[center]
-    data[region] = c1 - data[size] // 2, c2 - data[size] // 2, data[size], data[size]
 
 
 def mouse(data):
@@ -297,7 +289,6 @@ def consumer(data, queue):
                     # 考虑AD偏移
                     if data[ad]:
                         shift = gr[2] // 2
-                        print(shift)
                         if data[a] and data[d]:
                             scx = scx
                         elif data[a] and not data[d]:
@@ -331,13 +322,17 @@ if __name__ == '__main__':
     queue = manager.Queue(maxsize=1)
     data = manager.dict()
     data.update(init)
-    pi = Process(target=initializer, args=(data,), name='Initializer')
+    # 初始化数据
+    from toolkit import Monitor
+    data[center] = Monitor.resolution.center()
+    c1, c2 = data[center]
+    data[region] = c1 - data[size] // 2, c2 - data[size] // 2, data[size], data[size]
+    # 创建进程
     pm = Process(target=mouse, args=(data,), name='Mouse')
     pk = Process(target=keyboard, args=(data,), name='Keyboard')
     pp = Process(target=producer, args=(data, queue,), name='Producer')
     pc = Process(target=consumer, args=(data, queue,), name='Consumer')
-    pi.start()
-    pi.join()  # 初始化进程优先执行
+    # 启动进程
     pm.start()
     pk.start()
     pp.start()

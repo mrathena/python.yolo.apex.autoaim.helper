@@ -59,7 +59,7 @@ class Capturer:
         self.bmp.CreateCompatibleBitmap(self.sourceDCHandle, width, height)
         self.memoryDCHandle.SelectObject(self.bmp)
         # 初始化完成
-        self.initialized = True
+        self.initialized = True  # 标记, 用于判断是否成功初始化
 
     def __del__(self):
         if hasattr(self, 'initialized'):
@@ -70,7 +70,7 @@ class Capturer:
 
     def grab(self):
         left, top, width, height = self.region
-        self.memoryDCHandle.BitBlt((0, 0), (width, height), self.sourceDCHandle, (left, top), SRCCOPY)
+        self.memoryDCHandle.BitBlt((0, 0), (width, height), self.sourceDCHandle, (left, top), SRCCOPY)  # 耗时不稳定
         array = self.bmp.GetBitmapBits(True)
         image = np.frombuffer(array, dtype='uint8')
         image.shape = (height, width, 4)
