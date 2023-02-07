@@ -1,5 +1,4 @@
 import ctypes
-import math
 import multiprocessing
 import time
 from multiprocessing import Process
