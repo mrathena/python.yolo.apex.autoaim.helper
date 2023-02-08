@@ -1,4 +1,5 @@
 import os.path
+import sys
 import time
 
 import cv2
@@ -19,63 +20,83 @@ from utils.torch_utils import select_device, smart_inference_mode
 
 class Capturer:
 
-    def __init__(self, title: str, region: tuple):
+    def __init__(self, title: str, region: tuple, interval=60):
         """
+        title: window title, part of title is ok
         region: tuple, (left, top, width, height)
         """
-        # 找到窗体
-        windowNotFoundMessage = f'Window [{title}] not found, capturer instance initialize failure'
-        windowNotExplicitMessage = f'Window [{title}] not explicit, more than one window found, capturer instance initialize failure'
+        self.title = title
+        self.region = region
+        # 设置窗体句柄属性
+        self.hwnd = None  # 截图的窗体句柄
+        self.timestamp = None  # 上次成功设置句柄的时间戳
+        self.interval = interval  # 秒, 更新间隔
+
+    def __findHwnd(self):
         """
-        # 方式一, 需要完整窗体标题
-        windowHandle = FindWindow(None, title)
-        if 0 == windowHandle:
-            raise Exception(windowNotFoundMessage)
-        self.windowHandle = windowHandle
+        找出符合标题条件的窗体(唯一), 返回该窗体的句柄
+        None: 没有找到符合条件的窗体 / 符合条件的窗体不止一个
         """
-        # 方式二, 需要部分窗体标题
+        # 提示信息
+        windowNotFoundMessage = f'未找到标题中包含 [{self.title}] 的窗体'
+        windowNotExplicitMessage = f'找到多个标题中包含 [{self.title}] 的窗体, 需丰富标题条件内容, 保证找到的窗体唯一'
+        # 枚举窗体
         windowHandleList = []
         EnumWindows(lambda hwnd, param: param.append(hwnd), windowHandleList)
         filteredWindowHandleList = []
         for hwnd in windowHandleList:
-            if title in GetWindowText(hwnd):
+            if self.title in GetWindowText(hwnd):
                 filteredWindowHandleList.append(hwnd)
         size = len(filteredWindowHandleList)
         if size == 0:
-            raise Exception(windowNotFoundMessage)
+            Printer.warning(windowNotFoundMessage)
+            return None
         elif size > 1:
             message = windowNotExplicitMessage
             for i, hwnd in enumerate(filteredWindowHandleList):
                 message += f'\r\n\t{i + 1}: {hwnd}, ' + GetWindowText(hwnd)
-            raise Exception(message)
-        self.windowHandle = filteredWindowHandleList[0]
-        # 初始化
-        self.region = region
-        left, top, width, height = region
-        self.windowDCHandle = GetWindowDC(self.windowHandle)
-        self.sourceDCHandle = CreateDCFromHandle(self.windowDCHandle)
-        self.memoryDCHandle = self.sourceDCHandle.CreateCompatibleDC()
-        self.bmp = CreateBitmap()
-        self.bmp.CreateCompatibleBitmap(self.sourceDCHandle, width, height)
-        self.memoryDCHandle.SelectObject(self.bmp)
-        # 初始化完成
-        self.initialized = True  # 标记, 用于判断是否成功初始化
+            Printer.warning(message)
+            return None
+        # 符合条件的句柄
+        return filteredWindowHandleList[0]
 
-    def __del__(self):
-        if hasattr(self, 'initialized'):
-            DeleteObject(self.bmp.GetHandle())
-            self.memoryDCHandle.DeleteDC()
-            self.sourceDCHandle.DeleteDC()
-            ReleaseDC(self.windowHandle, self.windowDCHandle)
+    def __updateHwnd(self):
+        """
+        在以下时机更新句柄
+        1. 句柄属性为空时
+        2. 时间戳超过指定更新间隔时
+        """
+        if (self.hwnd is None) or (self.timestamp is not None and time.perf_counter_ns() - self.timestamp > 1_000_000_000 * self.interval):
+            hwnd = self.__findHwnd()
+            if hwnd is not None:
+                self.hwnd = hwnd
+                self.timestamp = time.perf_counter_ns()
+            else:
+                self.hwnd = None
+                self.timestamp = None
 
     def grab(self):
+        """
+        还有优化空间, 比如把各个HDC缓存起来, 在截图方法中每次执行BitBlt, 但是考虑到比较麻烦, 而且提升的效果也有限, 就先这样了
+        """
+        self.__updateHwnd()
         left, top, width, height = self.region
-        self.memoryDCHandle.BitBlt((0, 0), (width, height), self.sourceDCHandle, (left, top), SRCCOPY)  # 耗时不稳定
-        array = self.bmp.GetBitmapBits(True)
-        image = np.frombuffer(array, dtype='uint8')
-        image.shape = (height, width, 4)
-        image = cv2.cvtColor(image, cv2.COLOR_BGRA2BGR)
-        return image
+        hWinDC = GetWindowDC(self.hwnd)  # 具有要检索的设备上下文的窗口的句柄。 如果此值为 NULL， GetWindowDC 将检索整个屏幕的设备上下文。Null 时等同于调用 GetDesktopWindow 获得到句柄
+        srcDC = CreateDCFromHandle(hWinDC)
+        memDC = srcDC.CreateCompatibleDC()
+        bmp = CreateBitmap()
+        bmp.CreateCompatibleBitmap(srcDC, width, height)
+        memDC.SelectObject(bmp)
+        memDC.BitBlt((0, 0), (width, height), srcDC, (left, top), SRCCOPY)
+        array = bmp.GetBitmapBits(True)
+        DeleteObject(bmp.GetHandle())
+        memDC.DeleteDC()
+        srcDC.DeleteDC()
+        ReleaseDC(self.hwnd, hWinDC)
+        img = np.frombuffer(array, dtype='uint8')
+        img.shape = (height, width, 4)
+        img = cv2.cvtColor(img, cv2.COLOR_BGRA2BGR)
+        return img
 
     @staticmethod
     def backup(region):
@@ -151,6 +172,61 @@ class Timer:
             return f'{round(interval / 1_000_000, 3)}ms'
         else:
             return f'{round(interval / 1_000_000_000, 3)}s'
+
+
+class Printer:
+
+    """
+    开头部分：\033[显示方式;前景色;背景色m
+    结尾部分：\033[0m
+    显示方式: 0（默认值）、1（高亮，即加粗）、4（下划线）、7（反显）、
+    前景色: 30（黑色）、31（红色）、32（绿色）、 33（黄色）、34（蓝色）、35（梅色）、36（青色）、37（白色）
+    背景色: 40（黑色）、41（红色）、42（绿色）、 43（黄色）、44（蓝色）、45（梅色）、46（青色）、47（白色）
+    """
+
+    @staticmethod
+    def danger(*args):
+        sys.stdout.write('\033[0;31m')
+        size = len(args)
+        for i, item in enumerate(args):
+            sys.stdout.write(str(item))
+            if i < size - 1:
+                sys.stdout.write(' ')
+        sys.stdout.write('\033[0m')
+        print()
+
+    @staticmethod
+    def warning(*args):
+        sys.stdout.write('\033[0;33m')
+        size = len(args)
+        for i, item in enumerate(args):
+            sys.stdout.write(str(item))
+            if i < size - 1:
+                sys.stdout.write(' ')
+        sys.stdout.write('\033[0m')
+        print()
+
+    @staticmethod
+    def info(*args):
+        sys.stdout.write('\033[0;36m')
+        size = len(args)
+        for i, item in enumerate(args):
+            sys.stdout.write(str(item))
+            if i < size - 1:
+                sys.stdout.write(' ')
+        sys.stdout.write('\033[0m')
+        print()
+
+    @staticmethod
+    def success(*args):
+        sys.stdout.write('\033[0;32m')
+        size = len(args)
+        for i, item in enumerate(args):
+            sys.stdout.write(str(item))
+            if i < size - 1:
+                sys.stdout.write(' ')
+        sys.stdout.write('\033[0m')
+        print()
 
 
 class Predictor:
