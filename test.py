@@ -148,25 +148,27 @@ if __name__ == '__main__':
     region = 1000, 100, 320, 320
     print(region)
 
-    win = Win('test', region)
+    win = Win('百度一下', region)
 
+    print(FindWindow(None, '百度一下，你就知道 - 360极速浏览器X 21.0'))
 
-    title = 'Realtime Screen Capture'
-    while True:
-
-        t1 = time.perf_counter_ns()
-        img = win.grab()
-        t2 = time.perf_counter_ns()
-        cv2.putText(img, f'{Timer.cost(t2 - t1)}', (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.75, (255, 255, 255), 1)
-        # print(f'{Timer.cost(t2 - t1)}')
-        cv2.namedWindow(title, cv2.WINDOW_AUTOSIZE)
-        cv2.imshow(title, img)
-        SetWindowPos(FindWindow(None, title), HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE)
-        t3 = time.time()
-        k = cv2.waitKey(1)  # 0:不自动销毁也不会更新, 1:1ms延迟销毁
-        if k % 256 == 27:
-            cv2.destroyAllWindows()
-            exit('ESC ...')
+    # title = 'Realtime Screen Capture'
+    # while True:
+    #
+    #
+    #     t1 = time.perf_counter_ns()
+    #     img = win.grab()
+    #     t2 = time.perf_counter_ns()
+    #     cv2.putText(img, f'{Timer.cost(t2 - t1)}', (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.75, (255, 255, 255), 1)
+    #     # print(f'{Timer.cost(t2 - t1)}')
+    #     cv2.namedWindow(title, cv2.WINDOW_AUTOSIZE)
+    #     cv2.imshow(title, img)
+    #     SetWindowPos(FindWindow(None, title), HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE)
+    #     t3 = time.time()
+    #     k = cv2.waitKey(1)  # 0:不自动销毁也不会更新, 1:1ms延迟销毁
+    #     if k % 256 == 27:
+    #         cv2.destroyAllWindows()
+    #         exit('ESC ...')
 
     t1 = time.perf_counter_ns()
     for i in range(100):
