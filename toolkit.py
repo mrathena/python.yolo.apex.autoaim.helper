@@ -39,7 +39,7 @@ class Capturer:
         """
         # 提示信息
         windowNotFoundMessage = f'未找到标题中包含 [{self.title}] 的窗体'
-        windowNotExplicitMessage = f'找到多个标题中包含 [{self.title}] 的窗体, 需丰富标题条件内容, 保证找到的窗体唯一'
+        windowNotExplicitMessage = f'找到多个标题中包含 [{self.title}] 的窗体, 需确保根据给出的标题条件找到的窗体唯一'
         # 枚举窗体
         windowHandleList = []
         EnumWindows(lambda hwnd, param: param.append(hwnd), windowHandleList)
