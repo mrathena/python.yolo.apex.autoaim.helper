@@ -4,6 +4,8 @@ import time
 from multiprocessing import Process
 from queue import Full, Empty
 import cv2
+import pynput
+from pynput.mouse import Button
 from pynput.keyboard import Key, KeyCode, Listener
 from win32gui import FindWindow, SetWindowPos, GetWindowText, GetForegroundWindow
 from win32con import HWND_TOPMOST, SWP_NOMOVE, SWP_NOSIZE
@@ -18,6 +20,7 @@ stop = 'stop'
 lock = 'lock'
 show = 'show'
 head = 'head'
+left = 'left'
 title = 'title'
 region = 'region'
 center = 'center'
@@ -41,6 +44,7 @@ init = {
     lock: False,  # 锁定, Shift, 按左键时不锁(否则扔雷时也会锁)
     show: False,  # 显示, Down
     head: False,  # 瞄头, Up
+    left: False,  # 左键锁, PgDn, 按左键时锁
     predict: False,  # 预瞄, Left
     ad: True,  # AD, Right
     a: False,  # A, 是否被按下
@@ -50,6 +54,18 @@ init = {
 
 def game():
     return init[title] == GetWindowText(GetForegroundWindow())
+
+
+def mouse(data):
+
+    def down(x, y, button, pressed):
+        if not game():
+            return
+        if button == Button.left and data[left]:
+            data[lock] = pressed
+
+    with pynput.mouse.Listener(on_click=down) as m:
+        m.join()
 
 
 def keyboard(data):
@@ -90,6 +106,9 @@ def keyboard(data):
         elif key == Key.right:
             data[ad] = not data[ad]
             winsound.Beep(800 if data[ad] else 400, 200)
+        elif key == Key.page_down:
+            data[left] = not data[left]
+            winsound.Beep(800 if data[left] else 400, 200)
 
     with Listener(on_release=release, on_press=press) as k:
         k.join()
@@ -296,11 +315,14 @@ if __name__ == '__main__':
     c1, c2 = data[center]
     data[region] = c1 - data[size] // 2, c2 - data[size] // 2, data[size], data[size]
     # 创建进程
+    pm = Process(target=mouse, args=(data,), name='Mouse')
     pk = Process(target=keyboard, args=(data,), name='Keyboard')
     pp = Process(target=producer, args=(data, queue,), name='Producer')
     pc = Process(target=consumer, args=(data, queue,), name='Consumer')
     # 启动进程
+    pm.start()
     pk.start()
     pp.start()
     pc.start()
     pk.join()  # 不写 join 的话, 使用 dict 的地方就会报错 conn = self._tls.connection, AttributeError: 'ForkAwareLocal' object has no attribute 'connection'
+    pm.terminate()  # 鼠标进程无法主动监听到终止信号, 所以需强制结束
