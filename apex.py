@@ -143,7 +143,7 @@ def consumer(data, queue):
     except FileNotFoundError:
         print('初始化失败, 缺少文件')
 
-    def move(x, y):
+    def move(x: int, y: int):
         if (x == 0) & (y == 0):
             return
         driver.moveR(x, y, True)
@@ -214,7 +214,7 @@ def consumer(data, queue):
         img = None  # 展示的截图
         if product:
             aims, img = product
-            target = follow(aims)  # todo 尽量跟一个目标, 不要来回跳, 保证目标未检测到时能在原地停顿一会儿, 不直接跳到其他目标身上, 如目标长时间未被检测到, 才认为目标消失, 开始找下一个目标
+            target = follow(aims)  # todo 尽量跟一个目标, 不要来回跳
 
         # 预测目标
         predicted = None
