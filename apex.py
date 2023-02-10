@@ -3,9 +3,8 @@ import multiprocessing
 import time
 from multiprocessing import Process
 from queue import Full, Empty
-
 import cv2
-import pynput
+from pynput.keyboard import Key, KeyCode, Listener
 from win32gui import FindWindow, SetWindowPos, GetWindowText, GetForegroundWindow
 from win32con import HWND_TOPMOST, SWP_NOMOVE, SWP_NOSIZE
 import winsound
@@ -14,13 +13,11 @@ a = 'a'
 d = 'd'
 ad = 'ad'
 ads = 'ads'
-end = 'end'
-box = 'box'
-aim = 'aim'
+size = 'size'
+stop = 'stop'
+lock = 'lock'
 show = 'show'
 head = 'head'
-lock = 'lock'
-size = 'size'
 title = 'title'
 region = 'region'
 center = 'center'
@@ -28,53 +25,31 @@ radius = 'radius'
 weights = 'weights'
 classes = 'classes'
 predict = 'predict'
-timestamp = 'timestamp'
 confidence = 'confidence'
 
 init = {
     title: 'Apex Legends',  # 可在后台运行 print(GetWindowText(GetForegroundWindow())) 来检测前台游戏窗体标题
-    weights: 'weights.apex.private.crony.1435244588.1127E7B7107206013DE38A10EDDEEEB3-v5-n-416-50000-3-0.1.2.engine',  # 权重文件, weights.apex.public.dummy.engine, weights.apex.public.engine, weights.apex.private.crony.1435244588.1127E7B7107206013DE38A10EDDEEEB3-v5-n-416-50000-3-0.1.2.engine
+    weights: 'weights.apex.private.crony.1435244588.1127E7B7107206013DE38A10EDDEEEB3-v5-n-416-50000-3-0.1.2.engine',
     classes: 0,  # 要检测的标签的序号(标签序号从0开始), 多个时如右 [0, 1]
     confidence: 0.5,  # 置信度, 低于该值的认为是干扰
     size: 400,  # 截图的尺寸, 屏幕中心 size*size 大小
-    radius: 100,  # 瞄准生效半径, 目标瞄点出现在以准星为圆心该值为半径的圆的范围内时才会自动瞄准
+    radius: 200,  # 瞄准生效半径, 目标瞄点出现在以准星为圆心该值为半径的圆的范围内时才会自动瞄准
     ads: 1,  # 移动倍数, 调整方式: 关闭仿真并开启自瞄后, 不断瞄准目标旁边并按住 F 键, 当准星移动稳定且精准快速不振荡时, 就找到了合适的 ADS 值
     center: None,  # 屏幕中心点
     region: None,  # 截图范围
-    end: False,  # 退出标记, End
-    box: False,  # 显示开关, Up
-    show: False,  # 显示状态
-    aim: True,  # 瞄准开关, Down, X2(侧上键)
-    lock: False,  # 锁定状态(开火/预瞄)
-    timestamp: None,  # 开火时间
-    head: False,  # 是否瞄头, Right
-    predict: False,  # 是否预瞄, Left
-    ad: True,  # AD 模式开关, F11
-    a: False,  # A 键状态, 是否被按下
-    d: False,  # D 键状态, 是否被按下
+    stop: False,  # 退出, End
+    lock: False,  # 锁定, Shift, 按左键时不锁(否则扔雷时也会锁), 游戏中可设置前进自动跑以让出Shift键的快跑功能
+    show: False,  # 显示, Down
+    head: False,  # 瞄头, Up
+    predict: False,  # 预瞄, Left
+    ad: True,  # AD, Right
+    a: False,  # A, 是否被按下
+    d: False,  # D, 是否被按下
 }
 
 
 def game():
-    return init[title] in GetWindowText(GetForegroundWindow())
-
-
-def mouse(data):
-
-    def down(x, y, button, pressed):
-        if not game():
-            return
-        if button == pynput.mouse.Button.left:
-            data[lock] = pressed
-            if pressed:
-                data[timestamp] = time.time_ns()
-        elif button == pynput.mouse.Button.x2:
-            if pressed:
-                data[aim] = not data[aim]
-                winsound.Beep(800 if data[aim] else 400, 200)
-
-    with pynput.mouse.Listener(on_click=down) as m:
-        m.join()
+    return init[title] == GetWindowText(GetForegroundWindow())
 
 
 def keyboard(data):
@@ -82,44 +57,41 @@ def keyboard(data):
     def press(key):
         if not game():
             return
-        if key == pynput.keyboard.KeyCode.from_char('f'):
+        if key == Key.shift:
             data[lock] = True
-        elif key == pynput.keyboard.KeyCode.from_char('a'):
+        elif key in (KeyCode.from_char('a'), KeyCode.from_char('A')):
             data[a] = True
-        elif key == pynput.keyboard.KeyCode.from_char('d'):
+        elif key in (KeyCode.from_char('d'), KeyCode.from_char('D')):
             data[d] = True
 
     def release(key):
-        if key == pynput.keyboard.Key.end:
+        if key == Key.end:
             # 结束程序
-            data[end] = True
+            data[stop] = True
             winsound.Beep(400, 200)
             return False
         if not game():
             return
-        if key == pynput.keyboard.KeyCode.from_char('f'):
+        if key == Key.shift:
             data[lock] = False
-        elif key == pynput.keyboard.KeyCode.from_char('a'):
+        elif key in (KeyCode.from_char('a'), KeyCode.from_char('A')):
             data[a] = False
-        elif key == pynput.keyboard.KeyCode.from_char('d'):
+        elif key in (KeyCode.from_char('d'), KeyCode.from_char('D')):
             data[d] = False
-        elif key == pynput.keyboard.Key.f11:
-            data[ad] = not data[ad]
-            winsound.Beep(800 if data[ad] else 400, 200)
-        elif key == pynput.keyboard.Key.up:
-            data[box] = not data[box]
-            winsound.Beep(800 if data[box] else 400, 200)
-        elif key == pynput.keyboard.Key.down:
-            data[aim] = not data[aim]
-            winsound.Beep(800 if data[aim] else 400, 200)
-        elif key == pynput.keyboard.Key.left:
-            data[predict] = not data[predict]
-            winsound.Beep(800 if data[predict] else 400, 200)
-        elif key == pynput.keyboard.Key.right:
+        elif key == Key.up:
             data[head] = not data[head]
             winsound.Beep(800 if data[head] else 400, 200)
+        elif key == Key.down:
+            data[show] = not data[show]
+            winsound.Beep(800 if data[show] else 400, 200)
+        elif key == Key.left:
+            data[predict] = not data[predict]
+            winsound.Beep(800 if data[predict] else 400, 200)
+        elif key == Key.right:
+            data[ad] = not data[ad]
+            winsound.Beep(800 if data[ad] else 400, 200)
 
-    with pynput.keyboard.Listener(on_release=release, on_press=press) as k:
+    with Listener(on_release=release, on_press=press) as k:
         k.join()
 
 
@@ -132,27 +104,28 @@ def producer(data, queue):
 
     while True:
 
-        if data[end]:
+        if data[stop]:
             break
-        if data[box] or data[aim]:
-            t1 = time.perf_counter_ns()
-            img = capturer.grab()
-            t2 = time.perf_counter_ns()
-            aims, img = detector.detect(image=img, show=data[box])  # 目标检测, 得到截图坐标系内识别到的目标和标注好的图片(无需展示图片时img为none)
-            t3 = time.perf_counter_ns()
-            aims = detector.convert(aims=aims, region=data[region])   # 将截图坐标系转换为屏幕坐标系
-            # print(f'{Timer.cost(t3 - t1)}, {Timer.cost(t2 - t1)}, {Timer.cost(t3 - t2)}')
-            if data[box]:
-                cv2.putText(img, f'{Timer.cost(t3 - t1)}', (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.75, (255, 255, 255), 1)
-                cv2.putText(img, f'{Timer.cost(t2 - t1)}', (10, 50), cv2.FONT_HERSHEY_SIMPLEX, 0.75, (255, 255, 255), 1)
-                cv2.putText(img, f'{Timer.cost(t3 - t2)}', (10, 70), cv2.FONT_HERSHEY_SIMPLEX, 0.75, (255, 255, 255), 1)
-            try:
-                product = (aims, img)
-                queue.put(product, block=True, timeout=1)
-            except Full:
-                print(f'Producer: Queue Full')
-            except:
-                print('Producer Error')
+
+        # 生产数据
+        t1 = time.perf_counter_ns()
+        img = capturer.grab()
+        t2 = time.perf_counter_ns()
+        aims, img = detector.detect(image=img, show=data[show])  # 目标检测, 得到截图坐标系内识别到的目标和标注好的图片(无需展示图片时img为none)
+        t3 = time.perf_counter_ns()
+        aims = detector.convert(aims=aims, region=data[region])   # 将截图坐标系转换为屏幕坐标系
+        # print(f'{Timer.cost(t3 - t1)}, {Timer.cost(t2 - t1)}, {Timer.cost(t3 - t2)}')
+        if data[show] and img is not None:
+            cv2.putText(img, f'{Timer.cost(t3 - t1)}', (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.75, (255, 255, 255), 1)
+            cv2.putText(img, f'{Timer.cost(t2 - t1)}', (10, 50), cv2.FONT_HERSHEY_SIMPLEX, 0.75, (255, 255, 255), 1)
+            cv2.putText(img, f'{Timer.cost(t3 - t2)}', (10, 70), cv2.FONT_HERSHEY_SIMPLEX, 0.75, (255, 255, 255), 1)
+        try:
+            product = (aims, img)
+            queue.put(product, block=True, timeout=1)
+        except Full:
+            print(f'Producer: Queue Full')
+        except:
+            print('Producer Error')
 
 
 def consumer(data, queue):
@@ -224,11 +197,8 @@ def consumer(data, queue):
     # 主循环
     while True:
 
-        if data[end]:
-            cv2.destroyAllWindows()
+        if data[stop]:
             break
-        if not (data[box] or data[aim]):
-            continue
 
         # 数据获取
         product = None
@@ -251,7 +221,7 @@ def consumer(data, queue):
         if target:
             sc, gr = target
             predicted = predictor.predict(sc)
-            # if data[box] and img is not None:
+            # if data[show] and img is not None:
             #     cx, cy = data[center]
             #     scx, scy = sc  # 目标所在点
             #     px, py = predicted  # 目标将在点
@@ -270,7 +240,7 @@ def consumer(data, queue):
             #         cv2.putText(img, f'{scx - cx + px - cx}, {scy - cy + py - cy}', (10, top + 40), cv2.FONT_HERSHEY_SIMPLEX, 0.75, (255, 255, 255), 1)
 
         # 检测瞄准开关
-        if data[aim] and data[lock] and target:  # 瞄准开关是打开的, 且处于目标锁定状态
+        if data[lock] and target:  # 瞄准开关是打开的, 且处于目标锁定状态
             sc, gr = target
             if inner(sc):
                 # 计算要移动的像素
@@ -305,14 +275,12 @@ def consumer(data, queue):
                 move(ax, ay)
 
         # 检测显示开关
-        if data[box] and img is not None:
-            data[show] = True
+        if data[show] and img is not None:
             cv2.namedWindow(title, cv2.WINDOW_AUTOSIZE)
             cv2.imshow(title, img)
             SetWindowPos(FindWindow(None, title), HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE)
             cv2.waitKey(1)
-        if not data[box] and data[show]:
-            data[show] = False
+        if not data[show]:
             cv2.destroyAllWindows()
 
 
@@ -328,14 +296,11 @@ if __name__ == '__main__':
     c1, c2 = data[center]
     data[region] = c1 - data[size] // 2, c2 - data[size] // 2, data[size], data[size]
     # 创建进程
-    pm = Process(target=mouse, args=(data,), name='Mouse')
     pk = Process(target=keyboard, args=(data,), name='Keyboard')
     pp = Process(target=producer, args=(data, queue,), name='Producer')
     pc = Process(target=consumer, args=(data, queue,), name='Consumer')
     # 启动进程
-    pm.start()
     pk.start()
     pp.start()
     pc.start()
     pk.join()  # 不写 join 的话, 使用 dict 的地方就会报错 conn = self._tls.connection, AttributeError: 'ForkAwareLocal' object has no attribute 'connection'
-    pm.terminate()  # 鼠标进程无法主动监听到终止信号, 所以需强制结束
