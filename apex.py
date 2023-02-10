@@ -38,7 +38,7 @@ init = {
     center: None,  # 屏幕中心点
     region: None,  # 截图范围
     stop: False,  # 退出, End
-    lock: False,  # 锁定, Shift, 按左键时不锁(否则扔雷时也会锁), 游戏中可设置前进自动跑以让出Shift键的快跑功能
+    lock: False,  # 锁定, Shift, 按左键时不锁(否则扔雷时也会锁)
     show: False,  # 显示, Down
     head: False,  # 瞄头, Up
     predict: False,  # 预瞄, Left
