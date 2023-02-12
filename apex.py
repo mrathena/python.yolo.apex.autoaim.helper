@@ -2,7 +2,6 @@ import ctypes
 import multiprocessing
 import time
 from multiprocessing import Process
-from queue import Full, Empty
 import cv2
 import pynput
 from pynput.mouse import Button
