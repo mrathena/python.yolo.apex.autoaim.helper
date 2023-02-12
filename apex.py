@@ -36,8 +36,8 @@ init = {
     classes: 0,  # 要检测的标签的序号(标签序号从0开始), 多个时如右 [0, 1]
     confidence: 0.5,  # 置信度, 低于该值的认为是干扰
     size: 400,  # 截图的尺寸, 屏幕中心 size*size 大小
-    radius: 100,  # 瞄准生效半径, 目标瞄点出现在以准星为圆心该值为半径的圆的范围内时才会自动瞄准
-    ads: 1.2,  # 移动倍数, 调整方式: 关闭仿真并开启自瞄后, 不断瞄准目标旁边并按住 F 键, 当准星移动稳定且精准快速不振荡时, 就找到了合适的 ADS 值
+    radius: 100,  # 瞄准生效半径, 目标瞄点出现在以准星为圆心该值为半径的圆的范围内时才会锁定目标
+    ads: 1.2,  # 移动倍数, 调整方式: 瞄准目标旁边并按住 Shift 键, 当准星移动到目标点的过程, 稳定精准快速不振荡时, 就找到了合适的 ADS 值
     center: None,  # 屏幕中心点
     region: None,  # 截图范围
     stop: False,  # 退出, End
@@ -210,23 +210,6 @@ def loop(data):
         if target:
             sc, gr = target
             predicted = predictor.predict(sc)
-            # if data[show] and img is not None:
-            #     cx, cy = data[center]
-            #     scx, scy = sc  # 目标所在点
-            #     px, py = predicted  # 目标将在点
-            #     dx = px - scx
-            #     dy = py - scy
-            #     if abs(dx) > 0 or abs(dy) > 0:
-            #         gl, gt, gw, gh = gr
-            #         px1 = gl + dx * 3
-            #         py1 = gt + dy * 3
-            #         px2 = px1 + gw
-            #         py2 = py1 + gh
-            #         cv2.rectangle(img, (px1, py1), (px2, py2), (0, 256, 0), 2)
-            #         top = 60
-            #         cv2.putText(img, f'{px - cx}, {px - scx}', (10, top), cv2.FONT_HERSHEY_SIMPLEX, 0.75, (255, 255, 255), 1)
-            #         cv2.putText(img, f'{px - cx}, {py - cy}', (10, top + 20), cv2.FONT_HERSHEY_SIMPLEX, 0.75, (255, 255, 255), 1)
-            #         cv2.putText(img, f'{scx - cx + px - cx}, {scy - cy + py - cy}', (10, top + 40), cv2.FONT_HERSHEY_SIMPLEX, 0.75, (255, 255, 255), 1)
 
         # 检测锁定开关
         if data[lock] and target:

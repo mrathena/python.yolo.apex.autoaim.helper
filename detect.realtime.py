@@ -19,12 +19,11 @@ while True:
     _, img = detector.detect(image=img, show=True)
     t3 = time.perf_counter_ns()
     cv2.putText(img, f'{Timer.cost(t3 - t1)}', (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.75, (255, 255, 255), 1)
-    cv2.putText(img, f'{Timer.cost(t2 - t1)}', (150, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.75, (255, 255, 255), 1)
-    cv2.putText(img, f'{Timer.cost(t3 - t2)}', (290, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.75, (255, 255, 255), 1)
+    cv2.putText(img, f'{Timer.cost(t2 - t1)}', (10, 50), cv2.FONT_HERSHEY_SIMPLEX, 0.75, (255, 255, 255), 1)
+    cv2.putText(img, f'{Timer.cost(t3 - t2)}', (10, 70), cv2.FONT_HERSHEY_SIMPLEX, 0.75, (255, 255, 255), 1)
     cv2.namedWindow(title, cv2.WINDOW_AUTOSIZE)
     cv2.imshow(title, img)
     SetWindowPos(FindWindow(None, title), HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE)
-    t3 = time.time()
     k = cv2.waitKey(1)  # 0:不自动销毁也不会更新, 1:1ms延迟销毁
     if k % 256 == 27:
         cv2.destroyAllWindows()

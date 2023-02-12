@@ -1,9 +1,0 @@
-
-path: D:\resource\develop\python\dataset.yolo.v5\apex\dummy
-train: data/images  # train images (relative to 'path') 128 images
-val: data/images  # val images (relative to 'path') 128 images
-
-# Classes
-nc: 2  # number of classes
-names: ['body', 'head']  # class names
-
