@@ -114,13 +114,43 @@ def keyboard(data):
         k.join()
 
 
-def loop(data):
+def producer(data, queue):
 
-    from toolkit import Capturer, Detector, Predictor, Timer
+    from toolkit import Capturer, Detector, Timer
     capturer = Capturer(data[title], data[region])
     detector = Detector(data[weights], data[classes])
-    predictor = Predictor()
     winsound.Beep(800, 200)
+
+    while True:
+
+        if data[stop]:
+            break
+
+        # 生产数据
+        t1 = time.perf_counter_ns()
+        img = capturer.grab()
+        t2 = time.perf_counter_ns()
+        aims, img = detector.detect(image=img, show=data[show])  # 目标检测, 得到截图坐标系内识别到的目标和标注好的图片(无需展示图片时img为none)
+        t3 = time.perf_counter_ns()
+        aims = detector.convert(aims=aims, region=data[region])   # 将截图坐标系转换为屏幕坐标系
+        # print(f'{Timer.cost(t3 - t1)}, {Timer.cost(t2 - t1)}, {Timer.cost(t3 - t2)}')
+        if data[show] and img is not None:
+            cv2.putText(img, f'{Timer.cost(t3 - t1)}', (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.75, (255, 255, 255), 1)
+            cv2.putText(img, f'{Timer.cost(t2 - t1)}', (10, 50), cv2.FONT_HERSHEY_SIMPLEX, 0.75, (255, 255, 255), 1)
+            cv2.putText(img, f'{Timer.cost(t3 - t2)}', (10, 70), cv2.FONT_HERSHEY_SIMPLEX, 0.75, (255, 255, 255), 1)
+        try:
+            product = (aims, img)
+            queue.put(product, block=True, timeout=1)
+        except Full:
+            print(f'Producer: Queue Full')
+        except:
+            print('Producer Error')
+
+
+def consumer(data, queue):
+
+    from toolkit import Predictor
+    predictor = Predictor()
 
     try:
         import os
@@ -181,7 +211,7 @@ def loop(data):
                     minimum = distance
         return targets[index]
 
-    text = 'Realtime Screen Capture Detect'
+    title = 'Realtime Screen Capture Detect'
 
     # 主循环
     while True:
@@ -189,21 +219,21 @@ def loop(data):
         if data[stop]:
             break
 
-        # 生产数据
-        t1 = time.perf_counter_ns()
-        img = capturer.grab()
-        t2 = time.perf_counter_ns()
-        aims, img = detector.detect(image=img, show=data[show])  # 目标检测, 得到截图坐标系内识别到的目标和标注好的图片(无需展示图片时img为none)
-        t3 = time.perf_counter_ns()
-        aims = detector.convert(aims=aims, region=data[region])  # 将截图坐标系转换为屏幕坐标系
-        # print(f'{Timer.cost(t3 - t1)}, {Timer.cost(t2 - t1)}, {Timer.cost(t3 - t2)}')
-        if data[show] and img is not None:
-            cv2.putText(img, f'{Timer.cost(t3 - t1)}', (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.75, (255, 255, 255), 1)
-            cv2.putText(img, f'{Timer.cost(t2 - t1)}', (10, 50), cv2.FONT_HERSHEY_SIMPLEX, 0.75, (255, 255, 255), 1)
-            cv2.putText(img, f'{Timer.cost(t3 - t2)}', (10, 70), cv2.FONT_HERSHEY_SIMPLEX, 0.75, (255, 255, 255), 1)
+        # 数据获取
+        product = None
+        try:
+            product = queue.get(block=True, timeout=1)
+        except Empty:
+            print(f'Consumer: Queue Empty')
+        except:
+            print('Consumer Error')
 
-        # 数据处理
-        target = follow(aims)
+        # 数据处理, 得到 target 和 img
+        target = None  # 目标, (sc, gr), sc:屏幕坐标系下目标的中心点, gr:截图坐标系下目标的矩形ltwh
+        img = None  # 展示的截图
+        if product:
+            aims, img = product
+            target = follow(aims)  # todo 尽量跟一个目标, 不要来回跳
 
         # 预测目标
         predicted = None
@@ -228,8 +258,8 @@ def loop(data):
             #         cv2.putText(img, f'{px - cx}, {py - cy}', (10, top + 20), cv2.FONT_HERSHEY_SIMPLEX, 0.75, (255, 255, 255), 1)
             #         cv2.putText(img, f'{scx - cx + px - cx}, {scy - cy + py - cy}', (10, top + 40), cv2.FONT_HERSHEY_SIMPLEX, 0.75, (255, 255, 255), 1)
 
-        # 检测锁定开关
-        if data[lock] and target:
+        # 检测瞄准开关
+        if data[lock] and target:  # 瞄准开关是打开的, 且处于目标锁定状态
             sc, gr = target
             if inner(sc):
                 # 计算要移动的像素
@@ -247,7 +277,7 @@ def loop(data):
                 else:
                     # 考虑AD偏移
                     if data[ad]:
-                        shift = gr[2] // 3
+                        shift = gr[2] // 2
                         if data[a] and data[d]:
                             scx = scx
                         elif data[a] and not data[d]:
@@ -265,9 +295,9 @@ def loop(data):
 
         # 检测显示开关
         if data[show] and img is not None:
-            cv2.namedWindow(text, cv2.WINDOW_AUTOSIZE)
-            cv2.imshow(text, img)
-            SetWindowPos(FindWindow(None, text), HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE)
+            cv2.namedWindow(title, cv2.WINDOW_AUTOSIZE)
+            cv2.imshow(title, img)
+            SetWindowPos(FindWindow(None, title), HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE)
             cv2.waitKey(1)
         if not data[show]:
             cv2.destroyAllWindows()
@@ -276,6 +306,7 @@ def loop(data):
 if __name__ == '__main__':
     multiprocessing.freeze_support()
     manager = multiprocessing.Manager()
+    queue = manager.Queue(maxsize=1)
     data = manager.dict()
     data.update(init)
     # 初始化数据
@@ -286,10 +317,12 @@ if __name__ == '__main__':
     # 创建进程
     pm = Process(target=mouse, args=(data,), name='Mouse')
     pk = Process(target=keyboard, args=(data,), name='Keyboard')
-    pl = Process(target=loop, args=(data,), name='Loop')
+    pp = Process(target=producer, args=(data, queue,), name='Producer')
+    pc = Process(target=consumer, args=(data, queue,), name='Consumer')
     # 启动进程
     pm.start()
     pk.start()
-    pl.start()
+    pp.start()
+    pc.start()
     pk.join()  # 不写 join 的话, 使用 dict 的地方就会报错 conn = self._tls.connection, AttributeError: 'ForkAwareLocal' object has no attribute 'connection'
     pm.terminate()  # 鼠标进程无法主动监听到终止信号, 所以需强制结束
