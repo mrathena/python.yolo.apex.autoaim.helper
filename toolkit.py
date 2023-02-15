@@ -56,17 +56,20 @@ class Capturer:
             self.timestamp = None
             # 使用替代句柄
             hWinDC = GetWindowDC(GetDesktopWindow())
-        srcDC = CreateDCFromHandle(hWinDC)
-        memDC = srcDC.CreateCompatibleDC()
-        bmp = CreateBitmap()
-        bmp.CreateCompatibleBitmap(srcDC, width, height)
-        memDC.SelectObject(bmp)
-        memDC.BitBlt((0, 0), (width, height), srcDC, (left, top), SRCCOPY)
-        array = bmp.GetBitmapBits(True)
-        DeleteObject(bmp.GetHandle())
-        memDC.DeleteDC()
-        srcDC.DeleteDC()
-        ReleaseDC(self.hwnd, hWinDC)
+        try:
+            srcDC = CreateDCFromHandle(hWinDC)
+            memDC = srcDC.CreateCompatibleDC()
+            bmp = CreateBitmap()
+            bmp.CreateCompatibleBitmap(srcDC, width, height)
+            memDC.SelectObject(bmp)
+            memDC.BitBlt((0, 0), (width, height), srcDC, (left, top), SRCCOPY)
+            array = bmp.GetBitmapBits(True)
+            DeleteObject(bmp.GetHandle())
+            memDC.DeleteDC()
+            srcDC.DeleteDC()
+            ReleaseDC(self.hwnd, hWinDC)
+        except BaseException:
+            pass
         img = np.frombuffer(array, dtype='uint8')
         img.shape = (height, width, 4)
         img = cv2.cvtColor(img, cv2.COLOR_BGRA2BGR)
