@@ -41,7 +41,7 @@ init = {
     lock: False,  # 锁定, Shift, 按左键时不锁(否则扔雷时也会锁)
     show: False,  # 显示, Down
     head: False,  # 瞄头, Up
-    pidc: False,  # 是否启用(还未完善), Left
+    pidc: False,  # 是否启用 PID Controller, 还未完善, Left
     left: False,  # 左键锁, PgDn, 按左键时锁
 }
 
