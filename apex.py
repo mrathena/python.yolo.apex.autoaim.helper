@@ -11,10 +11,8 @@ from win32con import HWND_TOPMOST, SWP_NOMOVE, SWP_NOSIZE
 import winsound
 from simple_pid import PID
 
-a = 'a'
-d = 'd'
-ad = 'ad'
 ads = 'ads'
+pidc = 'pidc'
 size = 'size'
 stop = 'stop'
 lock = 'lock'
@@ -43,6 +41,7 @@ init = {
     lock: False,  # 锁定, Shift, 按左键时不锁(否则扔雷时也会锁)
     show: False,  # 显示, Down
     head: False,  # 瞄头, Up
+    pidc: False,  # 是否启用(还未完善), Left
     left: False,  # 左键锁, PgDn, 按左键时锁
 }
 
@@ -88,11 +87,10 @@ def keyboard(data):
             data[show] = not data[show]
             winsound.Beep(800 if data[show] else 400, 200)
         elif key == Key.left:
-            data[predict] = not data[predict]
-            winsound.Beep(800 if data[predict] else 400, 200)
+            data[pidc] = not data[pidc]
+            winsound.Beep(800 if data[pidc] else 400, 200)
         elif key == Key.right:
-            data[ad] = not data[ad]
-            winsound.Beep(800 if data[ad] else 400, 200)
+            pass
         elif key == Key.page_down:
             data[left] = not data[left]
             winsound.Beep(800 if data[left] else 400, 200)
@@ -171,7 +169,7 @@ def loop(data):
         return targets[index]
 
     text = 'Realtime Screen Capture Detect'
-    pidx = PID(3, 0, 0, setpoint=0)
+    pidx = PID(2, 0, 0, setpoint=0)
     pidy = PID(2, 0, 0, setpoint=0)
 
     # 主循环
@@ -188,12 +186,14 @@ def loop(data):
         t3 = time.perf_counter_ns()
         aims = detector.convert(aims=aims, region=data[region])  # 将截图坐标系转换为屏幕坐标系
         # print(f'{Timer.cost(t3 - t1)}, {Timer.cost(t2 - t1)}, {Timer.cost(t3 - t2)}')
+
+        # 记录耗时
         if data[show] and img is not None:
             cv2.putText(img, f'{Timer.cost(t3 - t1)}', (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.75, (255, 255, 255), 1)
             cv2.putText(img, f'{Timer.cost(t2 - t1)}', (10, 50), cv2.FONT_HERSHEY_SIMPLEX, 0.75, (255, 255, 255), 1)
             cv2.putText(img, f'{Timer.cost(t3 - t2)}', (10, 70), cv2.FONT_HERSHEY_SIMPLEX, 0.75, (255, 255, 255), 1)
 
-        # 数据处理
+        # 瞄点划线
         target = follow(aims)
         if target and data[show] and img is not None:
             index, clazz, conf, sc, gc, sr, gr = target
@@ -201,20 +201,24 @@ def loop(data):
             r = data[size] // 2
             cv2.line(img, gc, (r, r), (255, 255, 0), 2)
 
-        # 检测锁定开关
+        # 移动准星
         if data[lock] and target:
             index, clazz, conf, sc, gc, sr, gr = target
             if inner(sc):
-                # 计算要移动的像素
                 cx, cy = data[center]
                 sx, sy = sc
                 x = sx - cx
                 y = sy - cy
-                px = int(pidx(x))
-                py = int(pidy(y))
-                move(-px, -py)
+                if data[pidc]:
+                    px = int(pidx(x))
+                    py = int(pidy(y))
+                    move(-px, -py)
+                else:
+                    ax = int(x * data[ads])
+                    ay = int(y * data[ads])
+                    move(ax, ay)
 
-        # 检测显示开关
+        # 显示检测
         if data[show] and img is not None:
             cv2.namedWindow(text, cv2.WINDOW_AUTOSIZE)
             cv2.imshow(text, img)
