@@ -27,7 +27,6 @@ center = 'center'
 radius = 'radius'
 weights = 'weights'
 classes = 'classes'
-predict = 'predict'
 confidence = 'confidence'
 
 init = {
@@ -42,7 +41,7 @@ init = {
     region: None,  # 截图范围
     stop: False,  # 退出, End
     lock: False,  # 锁定, Shift, 按左键时不锁(否则扔雷时也会锁)
-    show: True,  # 显示, Down
+    show: False,  # 显示, Down
     head: False,  # 瞄头, Up
     left: False,  # 左键锁, PgDn, 按左键时锁
 }
