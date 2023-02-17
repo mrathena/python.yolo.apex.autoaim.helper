@@ -195,19 +195,8 @@ def loop(data):
         aims = detector.convert(aims=aims, region=data[region])  # 将截图坐标系转换为屏幕坐标系
         # print(f'{Timer.cost(t3 - t1)}, {Timer.cost(t2 - t1)}, {Timer.cost(t3 - t2)}')
 
-        # 记录耗时
-        if data[show] and img is not None:
-            cv2.putText(img, f'{Timer.cost(t3 - t1)}', (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.75, (255, 255, 255), 1)
-            cv2.putText(img, f'{Timer.cost(t2 - t1)}', (10, 50), cv2.FONT_HERSHEY_SIMPLEX, 0.75, (255, 255, 255), 1)
-            cv2.putText(img, f'{Timer.cost(t3 - t2)}', (10, 70), cv2.FONT_HERSHEY_SIMPLEX, 0.75, (255, 255, 255), 1)
-
-        # 瞄点划线
+        # 找到目标
         target = follow(aims)
-        if target and data[show] and img is not None:
-            index, clazz, conf, sc, gc, sr, gr = target
-            cv2.circle(img, gc, 2, (0, 0, 0), 2)
-            r = data[size] // 2
-            cv2.line(img, gc, (r, r), (255, 255, 0), 2)
 
         # 移动准星
         if data[lock] and target:
@@ -245,8 +234,20 @@ def loop(data):
                     plt.show()
                 except:
                     pass
+
         # 显示检测
         if data[show] and img is not None:
+            # 记录耗时
+            cv2.putText(img, f'{Timer.cost(t3 - t1)}', (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.75, (255, 255, 255), 1)
+            cv2.putText(img, f'{Timer.cost(t2 - t1)}', (10, 50), cv2.FONT_HERSHEY_SIMPLEX, 0.75, (255, 255, 255), 1)
+            cv2.putText(img, f'{Timer.cost(t3 - t2)}', (10, 70), cv2.FONT_HERSHEY_SIMPLEX, 0.75, (255, 255, 255), 1)
+            # 瞄点划线
+            if target:
+                index, clazz, conf, sc, gc, sr, gr = target
+                cv2.circle(img, gc, 2, (0, 0, 0), 2)
+                r = data[size] // 2
+                cv2.line(img, gc, (r, r), (255, 255, 0), 2)
+            # 展示图片
             cv2.namedWindow(text, cv2.WINDOW_AUTOSIZE)
             cv2.imshow(text, img)
             SetWindowPos(FindWindow(None, text), HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE)
