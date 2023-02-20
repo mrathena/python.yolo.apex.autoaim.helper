@@ -176,7 +176,8 @@ def loop(data):
 
     text = 'Realtime Screen Capture Detect'
     pidx = PID(2, 0, 0.02, setpoint=0)
-    pidx.output_limits = [-50, 50]
+    counter = 0  # 用于还原 pidx的setpoint, 连续多次pidx(x)的值在某范围内, 则认为目标不动, 还原
+    # pidx.output_limits = [-50, 50]
     pidy = PID(2, 0, 0.02, setpoint=0)
     times, targets, distances = [], [], []  # 用于绘图
 
@@ -211,9 +212,20 @@ def loop(data):
                         times.append(time.time())
                         targets.append(0)
                         distances.append(x)
-                    px = int(pidx(x))
-                    py = int(pidy(y))
-                    move(-px, -py)
+                    px = -int(pidx(x))
+                    print(px)
+                    if px > 20:
+                        pidx.setpoint = -20
+                    elif px < -20:
+                        pidx.setpoint = 20
+                    else:
+                        counter += 1
+                        if counter > 1:
+                            pidx.setpoint = 0
+                            counter = 0
+                    py = -int(pidy(y))
+                    move(px, py)
+                    time.sleep(0.001)
                 else:
                     ax = int(x * data[ads])
                     ay = int(y * data[ads])
