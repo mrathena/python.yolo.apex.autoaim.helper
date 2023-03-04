@@ -64,16 +64,16 @@ class Capturer:
             memDC.SelectObject(bmp)
             memDC.BitBlt((0, 0), (width, height), srcDC, (left, top), SRCCOPY)
             array = bmp.GetBitmapBits(True)
+            img = np.frombuffer(array, dtype='uint8')
+            img.shape = (height, width, 4)
+            img = cv2.cvtColor(img, cv2.COLOR_BGRA2BGR)
             DeleteObject(bmp.GetHandle())
             memDC.DeleteDC()
             srcDC.DeleteDC()
             ReleaseDC(self.hwnd, hWinDC)
+            return img
         except BaseException:
-            pass
-        img = np.frombuffer(array, dtype='uint8')
-        img.shape = (height, width, 4)
-        img = cv2.cvtColor(img, cv2.COLOR_BGRA2BGR)
-        return img
+            return None
 
     @staticmethod
     def backup(region):
