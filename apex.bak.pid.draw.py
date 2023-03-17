@@ -176,6 +176,7 @@ def loop(data):
 
     text = 'Realtime Screen Capture Detect'
     pidx = PID(2, 0, 0.02, setpoint=0)
+    times, targets, distances = [], [], []  # 用于绘图
 
     # 主循环
     while True:
@@ -206,12 +207,32 @@ def loop(data):
                     x = sx - cx
                     y = sy - cy
                     if data[pidc]:
+                        if data[debug]:  # 用于绘图
+                            times.append(time.time())
+                            targets.append(0)
+                            distances.append(x)
                         px = -int(pidx(x))
                         move(px, y)
                     else:
                         ax = int(x * data[ads])
                         ay = int(y * data[ads])
                         move(ax, ay)
+            else:  # 用于绘图
+                if data[debug] and len(times) != 0:
+                    try:
+                        plt.plot(times, targets, label='target')
+                        plt.plot(times, distances, label='distance')
+                        plt.legend()  # 图例
+                        plt.xlabel('time')
+                        plt.ylabel('distance')
+                        times.clear()
+                        targets.clear()
+                        distances.clear()
+                        matplotlib.use('TkAgg')  # TkAgg, module://backend_interagg
+                        winsound.Beep(600, 200)
+                        plt.show()
+                    except:
+                        pass
 
             # 显示检测
             if data[show] and img is not None:
