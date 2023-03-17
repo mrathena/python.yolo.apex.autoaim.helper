@@ -267,6 +267,7 @@ def loop(data):
                 cv2.waitKey(1)
             if not data[show]:
                 cv2.destroyAllWindows()
+
         except:
             pass
 
