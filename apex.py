@@ -183,89 +183,92 @@ def loop(data):
 
     # 主循环
     while True:
+        try:
 
-        if data[stop]:
-            break
+            if data[stop]:
+                break
 
-        # 生产数据
-        t1 = time.perf_counter_ns()
-        img = capturer.grab()
-        # img = Capturer.backup(data[region])  # 如果句柄截图是黑色, 不能正常使用, 可以使用本行的截图方法
-        t2 = time.perf_counter_ns()
-        aims, img = detector.detect(image=img, show=data[show])  # 目标检测, 得到截图坐标系内识别到的目标和标注好的图片(无需展示图片时img为none)
-        t3 = time.perf_counter_ns()
-        aims = detector.convert(aims=aims, region=data[region])  # 将截图坐标系转换为屏幕坐标系
-        # print(f'{Timer.cost(t3 - t1)}, {Timer.cost(t2 - t1)}, {Timer.cost(t3 - t2)}')
+            # 生产数据
+            t1 = time.perf_counter_ns()
+            img = capturer.grab()
+            # img = Capturer.backup(data[region])  # 如果句柄截图是黑色, 不能正常使用, 可以使用本行的截图方法
+            t2 = time.perf_counter_ns()
+            aims, img = detector.detect(image=img, show=data[show])  # 目标检测, 得到截图坐标系内识别到的目标和标注好的图片(无需展示图片时img为none)
+            t3 = time.perf_counter_ns()
+            aims = detector.convert(aims=aims, region=data[region])  # 将截图坐标系转换为屏幕坐标系
+            # print(f'{Timer.cost(t3 - t1)}, {Timer.cost(t2 - t1)}, {Timer.cost(t3 - t2)}')
 
-        # 找到目标
-        target = follow(aims)
+            # 找到目标
+            target = follow(aims)
 
-        # 移动准星
-        if data[lock] and target:
-            index, clazz, conf, sc, gc, sr, gr = target
-            if inner(sc):
-                cx, cy = data[center]
-                sx, sy = sc
-                x = sx - cx
-                y = sy - cy
-                if data[pidc]:
-                    if data[debug]:  # 用于绘图
-                        times.append(time.time())
-                        targets.append(0)
-                        distances.append(x)
-                    px = -int(pidx(x))
-                    if px > 20:
-                        pidx.setpoint = -20
-                    elif px < -20:
-                        pidx.setpoint = 20
-                    else:
-                        counter += 1
-                        if counter > 1:
-                            pidx.setpoint = 0
-                            counter = 0
-                    py = -int(pidy(y))
-                    move(px, py)
-                    time.sleep(0.001)
-                else:
-                    ax = int(x * data[ads])
-                    ay = int(y * data[ads])
-                    move(ax, ay)
-        else:  # 用于绘图
-            if data[debug] and len(times) != 0:
-                try:
-                    plt.plot(times, targets, label='target')
-                    plt.plot(times, distances, label='distance')
-                    plt.legend()  # 图例
-                    plt.xlabel('time')
-                    plt.ylabel('distance')
-                    times.clear()
-                    targets.clear()
-                    distances.clear()
-                    matplotlib.use('TkAgg')  # TkAgg, module://backend_interagg
-                    winsound.Beep(600, 200)
-                    plt.show()
-                except:
-                    pass
-
-        # 显示检测
-        if data[show] and img is not None:
-            # 记录耗时
-            cv2.putText(img, f'{Timer.cost(t3 - t1)}', (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.75, (255, 255, 255), 1)
-            cv2.putText(img, f'{Timer.cost(t2 - t1)}', (10, 50), cv2.FONT_HERSHEY_SIMPLEX, 0.75, (255, 255, 255), 1)
-            cv2.putText(img, f'{Timer.cost(t3 - t2)}', (10, 70), cv2.FONT_HERSHEY_SIMPLEX, 0.75, (255, 255, 255), 1)
-            # 瞄点划线
-            if target:
+            # 移动准星
+            if data[lock] and target:
                 index, clazz, conf, sc, gc, sr, gr = target
-                cv2.circle(img, gc, 2, (0, 0, 0), 2)
-                r = data[size] // 2
-                cv2.line(img, gc, (r, r), (255, 255, 0), 2)
-            # 展示图片
-            cv2.namedWindow(text, cv2.WINDOW_AUTOSIZE)
-            cv2.imshow(text, img)
-            SetWindowPos(FindWindow(None, text), HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE)
-            cv2.waitKey(1)
-        if not data[show]:
-            cv2.destroyAllWindows()
+                if inner(sc):
+                    cx, cy = data[center]
+                    sx, sy = sc
+                    x = sx - cx
+                    y = sy - cy
+                    if data[pidc]:
+                        if data[debug]:  # 用于绘图
+                            times.append(time.time())
+                            targets.append(0)
+                            distances.append(x)
+                        px = -int(pidx(x))
+                        if px > 20:
+                            pidx.setpoint = -20
+                        elif px < -20:
+                            pidx.setpoint = 20
+                        else:
+                            counter += 1
+                            if counter > 1:
+                                pidx.setpoint = 0
+                                counter = 0
+                        py = -int(pidy(y))
+                        move(px, py)
+                        time.sleep(0.001)
+                    else:
+                        ax = int(x * data[ads])
+                        ay = int(y * data[ads])
+                        move(ax, ay)
+            else:  # 用于绘图
+                if data[debug] and len(times) != 0:
+                    try:
+                        plt.plot(times, targets, label='target')
+                        plt.plot(times, distances, label='distance')
+                        plt.legend()  # 图例
+                        plt.xlabel('time')
+                        plt.ylabel('distance')
+                        times.clear()
+                        targets.clear()
+                        distances.clear()
+                        matplotlib.use('TkAgg')  # TkAgg, module://backend_interagg
+                        winsound.Beep(600, 200)
+                        plt.show()
+                    except:
+                        pass
+
+            # 显示检测
+            if data[show] and img is not None:
+                # 记录耗时
+                cv2.putText(img, f'{Timer.cost(t3 - t1)}', (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.75, (255, 255, 255), 1)
+                cv2.putText(img, f'{Timer.cost(t2 - t1)}', (10, 50), cv2.FONT_HERSHEY_SIMPLEX, 0.75, (255, 255, 255), 1)
+                cv2.putText(img, f'{Timer.cost(t3 - t2)}', (10, 70), cv2.FONT_HERSHEY_SIMPLEX, 0.75, (255, 255, 255), 1)
+                # 瞄点划线
+                if target:
+                    index, clazz, conf, sc, gc, sr, gr = target
+                    cv2.circle(img, gc, 2, (0, 0, 0), 2)
+                    r = data[size] // 2
+                    cv2.line(img, gc, (r, r), (255, 255, 0), 2)
+                # 展示图片
+                cv2.namedWindow(text, cv2.WINDOW_AUTOSIZE)
+                cv2.imshow(text, img)
+                SetWindowPos(FindWindow(None, text), HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE)
+                cv2.waitKey(1)
+            if not data[show]:
+                cv2.destroyAllWindows()
+        except:
+            pass
 
 
 if __name__ == '__main__':
