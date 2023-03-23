@@ -11,9 +11,6 @@ from win32con import HWND_TOPMOST, SWP_NOMOVE, SWP_NOSIZE
 import winsound
 from simple_pid import PID
 
-import matplotlib
-import matplotlib.pyplot as plt
-
 ads = 'ads'
 pidc = 'pidc'
 size = 'size'
