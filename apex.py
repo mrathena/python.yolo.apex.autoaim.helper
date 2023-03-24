@@ -42,8 +42,8 @@ init = {
     lock: False,  # 锁定, Shift, 按左键时不锁(否则扔雷时也会锁)
     show: False,  # 显示, Down
     head: False,  # 瞄头, Up
-    pidc: False,  # 是否启用 PID Controller, 还未完善, Left
-    left: False,  # 左键锁, Right, 按鼠标左键时锁
+    pidc: False,  # 是否启用 PID Controller, 还未完善, Right
+    left: False,  # 左键锁, Left, 按鼠标左键时锁
     debug: False,  # Debug 模式, 用来调试 PID 值
 }
 
@@ -88,10 +88,10 @@ def keyboard(data):
         elif key == Key.down:
             data[show] = not data[show]
             winsound.Beep(800 if data[show] else 400, 200)
-        elif key == Key.left:
+        elif key == Key.right:
             data[pidc] = not data[pidc]
             winsound.Beep(800 if data[pidc] else 400, 200)
-        elif key == Key.right:
+        elif key == Key.left:
             data[left] = not data[left]
             winsound.Beep(800 if data[left] else 400, 200)
         elif key == Key.page_down:
