@@ -10,6 +10,7 @@ from win32gui import FindWindow, SetWindowPos, GetWindowText, GetForegroundWindo
 from win32con import HWND_TOPMOST, SWP_NOMOVE, SWP_NOSIZE
 import winsound
 from simple_pid import PID
+from queue import Queue
 
 ads = 'ads'
 pidc = 'pidc'
@@ -20,7 +21,6 @@ show = 'show'
 head = 'head'
 left = 'left'
 title = 'title'
-debug = 'debug'
 region = 'region'
 center = 'center'
 radius = 'radius'
@@ -35,18 +35,18 @@ init = {
     confidence: 0.5,  # 置信度, 低于该值的认为是干扰
     size: 320,  # 截图的尺寸, 屏幕中心 size*size 大小
     radius: 160,  # 瞄准生效半径, 目标瞄点出现在以准星为圆心该值为半径的圆的范围内时才会锁定目标
-    ads: 1.2,  # 移动倍数, 调整方式: 瞄准目标旁边并按住 Shift 键, 当准星移动到目标点的过程, 稳定精准快速不振荡时, 就找到了合适的 ADS 值
+    ads: 1.4,  # 移动倍数, 调整方式: 瞄准目标旁边并按住 Shift 键, 当准星移动到目标点的过程, 稳定精准快速不振荡时, 就找到了合适的 ADS 值
     center: None,  # 屏幕中心点
     region: None,  # 截图范围
     stop: False,  # 退出, End
     lock: False,  # 锁定, Shift, 按左键时不锁(否则扔雷时也会锁)
     show: False,  # 显示, Down
     head: False,  # 瞄头, Up
-    pidc: False,  # 是否启用 PID Controller, 还未完善, Right
+    pidc: True,  # 是否启用 PID Controller, 还未完善, Right
     left: False,  # 左键锁, Left, 按鼠标左键时锁
-    debug: False,  # Debug 模式, 用来调试 PID 值
 }
 
+pidx = PID(2, 0, 0, setpoint=10)  # 水平方向的 PID 对象实例, 本计划用数字键盘来做 PID 动态调节快捷键, 并没有成功, 可能存在内存可见性问题
 
 def game():
     return init[title] == GetWindowText(GetForegroundWindow())
@@ -94,9 +94,34 @@ def keyboard(data):
         elif key == Key.left:
             data[left] = not data[left]
             winsound.Beep(800 if data[left] else 400, 200)
-        elif key == Key.page_down:
-            data[debug] = not data[debug]
-            winsound.Beep(800 if data[debug] else 400, 200)
+        elif hasattr(key, 'vk'):
+            if key.vk == 103:  # Num 7
+                pidx.Kp += 1
+                print(pidx)
+            elif key.vk == 104:  # Num 8
+                pidx.Ki += 0.1
+                print(pidx)
+            elif key.vk == 105:  # Num 9
+                pidx.Kd += 0.1
+                print(pidx)
+            elif key.vk == 97:  # Num 1
+                pidx.Kp -= 1
+                print(pidx)
+            elif key.vk == 98:  # Num 2
+                pidx.Ki -= 0.1
+                print(pidx)
+            elif key.vk == 99:  # Num 3
+                pidx.Kd -= 0.1
+                print(pidx)
+            elif key.vk == 100:  # Num 4
+                pidx.Kp = 2
+                print(pidx)
+            elif key.vk == 101:  # Num 5
+                pidx.Ki = 0
+                print(pidx)
+            elif key.vk == 102:  # Num 6
+                pidx.Kd = 0
+                print(pidx)
 
     with Listener(on_release=release, on_press=press) as k:
         k.join()
@@ -172,7 +197,8 @@ def loop(data):
         return targets[index]
 
     text = 'Realtime Screen Capture Detect'
-    pidx = PID(2, 0, 0.02, setpoint=0)
+    # pidx = PID(2, 0, 0.02, setpoint=0)
+    queue = Queue(5)
 
     # 主循环
     while True:
@@ -202,12 +228,34 @@ def loop(data):
                     sx, sy = sc
                     x = sx - cx
                     y = sy - cy
+                    ay = int(y * data[ads])
                     if data[pidc]:
                         px = -int(pidx(x))
-                        move(px, y)
+                        # 通过x推测目标运动方向, 进而修改pid.setpoint预瞄点
+                        if queue.full():
+                            queue.get()
+                        queue.put(px)
+                        lst = list(queue.queue)
+                        print(lst)
+                        positiveCounter = 0
+                        negativeCounter = 0
+                        for i in lst:
+                            if i > 0:
+                                positiveCounter += 1
+                            elif i < 0:
+                                negativeCounter += 1
+                        if positiveCounter == queue.qsize():
+                            print('>>')
+                            pidx.setpoint = -10
+                        elif negativeCounter == queue.qsize():
+                            print('<<')
+                            pidx.setpoint = 10
+                        else:
+                            print('--')
+                            pidx.setpoint = 0
+                        move(px, ay)
                     else:
                         ax = int(x * data[ads])
-                        ay = int(y * data[ads])
                         move(ax, ay)
 
             # 显示检测
