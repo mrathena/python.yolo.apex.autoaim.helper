@@ -215,9 +215,8 @@ def loop(data, queue):
                     minimum = distance
         return targets[index]
 
-    text = 'Realtime Screen Capture Detect'
     pidx = PID(data[kp], data[ki], data[kd], setpoint=0)
-    q = Queue(4)
+    direction = Queue(4)
 
     # 主循环
     while True:
@@ -264,26 +263,26 @@ def loop(data, queue):
                         # 通过pid计算位移
                         px = -int(pidx(x))
                         # 通过x推测目标运动方向, 进而修改pid.setpoint预瞄点
-                        if q.full():
-                            q.get()
-                        q.put(px)
-                        lst = list(q.queue)
-                        positiveCounter = 0
-                        negativeCounter = 0
+                        if direction.full():
+                            direction.get()
+                        direction.put(px)
+                        lst = list(direction.queue)
+                        positive = 0  # 向右计数器
+                        negative = 0  # 向左计数器
                         for i in lst:
-                            if i > data[ks]:
-                                positiveCounter += 1
-                            elif i < -data[ks]:
-                                negativeCounter += 1
-                        if positiveCounter == q.qsize():
-                            print('>>')
-                            pidx.setpoint = -data[ks]
-                        elif negativeCounter == q.qsize():
-                            print('<<')
-                            pidx.setpoint = data[ks]
-                        else:
-                            print('--')
-                            pidx.setpoint = 0
+                            if i > 10:
+                                positive += 1
+                            elif i < -10:
+                                negative += 1
+                        # if positive == direction.qsize():
+                        #     # print('>>')
+                        #     pidx.setpoint = -data[ks]
+                        # elif negative == direction.qsize():
+                        #     # print('<<')
+                        #     pidx.setpoint = data[ks]
+                        # else:
+                        #     # print('--')
+                        #     pidx.setpoint = 0
                         # 移动鼠标
                         move(px, ay)
                     else:
@@ -291,7 +290,7 @@ def loop(data, queue):
                         move(ax, ay)
 
             # 显示检测,发送数据(发送耗时<1ms)
-            if data[show] and img and not queue.full():
+            if data[show] and img is not None and not queue.full():
                 queue.put((img, target, t1, t2, t3, round(pidx.Kp, 3), round(pidx.Ki, 3), round(pidx.Kd, 3), pidx.setpoint))
 
         except:
