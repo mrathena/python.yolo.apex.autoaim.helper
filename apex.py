@@ -218,6 +218,8 @@ def loop(data, queue):
     pidx = PID(data[kp], data[ki], data[kd], setpoint=0)
     direction = Queue(4)
 
+    t = time.perf_counter_ns()
+
     # 主循环
     while True:
         try:
@@ -260,6 +262,7 @@ def loop(data, queue):
                             pidx.Kp = data[kp]
                             pidx.Ki = data[ki]
                             pidx.Kd = data[kd]
+                            # pidx.setpoint = data[ks]
                         # 通过pid计算位移
                         px = -int(pidx(x))
                         # 通过x推测目标运动方向, 进而修改pid.setpoint预瞄点
@@ -274,15 +277,15 @@ def loop(data, queue):
                                 positive += 1
                             elif i < -10:
                                 negative += 1
-                        # if positive == direction.qsize():
-                        #     # print('>>')
-                        #     pidx.setpoint = -data[ks]
-                        # elif negative == direction.qsize():
-                        #     # print('<<')
-                        #     pidx.setpoint = data[ks]
-                        # else:
-                        #     # print('--')
-                        #     pidx.setpoint = 0
+                        if positive == direction.qsize():
+                            # print('>>')
+                            pidx.setpoint = -data[ks]
+                        elif negative == direction.qsize():
+                            # print('<<')
+                            pidx.setpoint = data[ks]
+                        else:
+                            # print('--')
+                            pidx.setpoint = 0
                         # 移动鼠标
                         move(px, ay)
                     else:
@@ -291,7 +294,10 @@ def loop(data, queue):
 
             # 显示检测,发送数据(发送耗时<1ms)
             if data[show] and img is not None and not queue.full():
-                queue.put((img, target, t1, t2, t3, round(pidx.Kp, 3), round(pidx.Ki, 3), round(pidx.Kd, 3), pidx.setpoint))
+                queue.put((img, target, t1, t2, t3, time.perf_counter_ns() - t, round(pidx.Kp, 3), round(pidx.Ki, 3), round(pidx.Kd, 3), pidx.setpoint))
+
+            # 计时
+            t = time.perf_counter_ns()
 
         except:
             pass
@@ -306,11 +312,12 @@ def window(data, queue):
                 break
             if data[show] and not queue.empty():
                 # 显示检测,接收数据(接收耗时+处理耗时>1ms)
-                img, target, t1, t2, t3, p, i, d, setpoint = queue.get()
+                img, target, t1, t2, t3, total, p, i, d, setpoint = queue.get()
                 # 记录耗时
                 cv2.putText(img, f'{Timer.cost(t2 - t1)}', (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.75, (255, 255, 255), 1)
                 cv2.putText(img, f'{Timer.cost(t3 - t2)}', (10, 50), cv2.FONT_HERSHEY_SIMPLEX, 0.75, (255, 255, 255), 1)
                 cv2.putText(img, f'{Timer.cost(t3 - t1)}', (10, 70), cv2.FONT_HERSHEY_SIMPLEX, 0.75, (255, 255, 255), 1)
+                cv2.putText(img, f'FPS {round(1000 / (total / 1_000_000))}', (10, 100), cv2.FONT_HERSHEY_SIMPLEX, 0.75, (255, 255, 255), 1)
                 # 记录PID
                 cv2.putText(img, f'{p} {i} {d}, {setpoint}', (10, data[size] - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.75, (255, 255, 255), 1)
                 # 瞄点划线
