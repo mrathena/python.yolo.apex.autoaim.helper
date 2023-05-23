@@ -103,9 +103,9 @@ class BaseModel(nn.Module):
             if profile:
                 self._profile_one_layer(m, x, dt)
             x = m(x)  # run
-            y.append(x if m.i in self.save else None)  # save output
+            y.append(x if m.ki in self.save else None)  # save output
             if visualize:
-                feature_visualization(x, m.type, m.i, save_dir=visualize)
+                feature_visualization(x, m.type, m.ki, save_dir=visualize)
         return x
 
     def _profile_one_layer(self, m, x, dt):
@@ -261,7 +261,7 @@ class ClassificationModel(BaseModel):
         m = model.model[-1]  # last layer
         ch = m.conv.in_channels if hasattr(m, 'conv') else m.cv1.conv.in_channels  # ch into module
         c = Classify(ch, nc)  # Classify()
-        c.i, c.f, c.type = m.i, m.f, 'models.common.Classify'  # index, from, type
+        c.i, c.f, c.type = m.ki, m.f, 'models.common.Classify'  # index, from, type
         model.model[-1] = c  # replace
         self.model = model.model
         self.stride = model.stride

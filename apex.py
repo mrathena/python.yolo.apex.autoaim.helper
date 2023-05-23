@@ -12,8 +12,16 @@ import winsound
 from simple_pid import PID
 from queue import Queue
 
+p = 'p'
+i = 'i'
+d = 'd'
+kp = 'kp'
+ki = 'ki'
+kd = 'kd'
+ks = 'ks'
 ads = 'ads'
 pidc = 'pidc'
+pidr = 'pidr'
 size = 'size'
 stop = 'stop'
 lock = 'lock'
@@ -34,19 +42,25 @@ init = {
     classes: 0,  # 要检测的标签的序号(标签序号从0开始), 多个时如右 [0, 1]
     confidence: 0.5,  # 置信度, 低于该值的认为是干扰
     size: 320,  # 截图的尺寸, 屏幕中心 size*size 大小
-    radius: 160,  # 瞄准生效半径, 目标瞄点出现在以准星为圆心该值为半径的圆的范围内时才会锁定目标
+    radius: 500,  # 瞄准生效半径, 目标瞄点出现在以准星为圆心该值为半径的圆的范围内时才会锁定目标
     ads: 1.4,  # 移动倍数, 调整方式: 瞄准目标旁边并按住 Shift 键, 当准星移动到目标点的过程, 稳定精准快速不振荡时, 就找到了合适的 ADS 值
     center: None,  # 屏幕中心点
     region: None,  # 截图范围
     stop: False,  # 退出, End
-    lock: False,  # 锁定, Shift, 按左键时不锁(否则扔雷时也会锁)
+    lock: False,  # 锁定, Shift
     show: False,  # 显示, Down
     head: False,  # 瞄头, Up
-    pidc: True,  # 是否启用 PID Controller, 还未完善, Right
-    left: False,  # 左键锁, Left, 按鼠标左键时锁
+    left: False,  # 左键锁, Left, 按鼠标左键时锁, 默认按左键时不锁(因为扔雷时也会锁)
+    pidc: True,  # 是否启用 PID 控制, Right, 还未完善
+    p: 2,  # PID 的 默认 P
+    i: 0,  # PID 的 默认 I
+    d: 0,  # PID 的 默认 D
+    kp: 2,  # PID 的 P, 数字键789分别增加pid的值
+    ki: 0,  # PID 的 I, 数字键456分别还原pid的值
+    kd: 0,  # PID 的 D, 数字键123分别减少pid的值
+    ks: 0,  # PID 的 setpoint
+    pidr: False,  # 是否重置 pidx, 数字键0
 }
-
-pidx = PID(2, 0, 0, setpoint=10)  # 水平方向的 PID 对象实例, 本计划用数字键盘来做 PID 动态调节快捷键, 并没有成功, 可能存在内存可见性问题
 
 def game():
     return init[title] == GetWindowText(GetForegroundWindow())
@@ -95,33 +109,29 @@ def keyboard(data):
             data[left] = not data[left]
             winsound.Beep(800 if data[left] else 400, 200)
         elif hasattr(key, 'vk'):
-            if key.vk == 103:  # Num 7
-                pidx.Kp += 1
-                print(pidx)
-            elif key.vk == 104:  # Num 8
-                pidx.Ki += 0.1
-                print(pidx)
-            elif key.vk == 105:  # Num 9
-                pidx.Kd += 0.1
-                print(pidx)
-            elif key.vk == 97:  # Num 1
-                pidx.Kp -= 1
-                print(pidx)
-            elif key.vk == 98:  # Num 2
-                pidx.Ki -= 0.1
-                print(pidx)
-            elif key.vk == 99:  # Num 3
-                pidx.Kd -= 0.1
-                print(pidx)
-            elif key.vk == 100:  # Num 4
-                pidx.Kp = 2
-                print(pidx)
-            elif key.vk == 101:  # Num 5
-                pidx.Ki = 0
-                print(pidx)
-            elif key.vk == 102:  # Num 6
-                pidx.Kd = 0
-                print(pidx)
+            if 96 <= key.vk <= 105:
+                if key.vk == 103:  # Num 7
+                    data[kp] += 0.1
+                elif key.vk == 104:  # Num 8
+                    data[ki] += 0.01
+                elif key.vk == 105:  # Num 9
+                    data[kd] += 0.001
+                elif key.vk == 97:  # Num 1
+                    data[kp] -= 0.1
+                elif key.vk == 98:  # Num 2
+                    data[ki] -= 0.01
+                elif key.vk == 99:  # Num 3
+                    data[kd] -= 0.001
+                elif key.vk == 100:  # Num 4
+                    data[kp] = data[p]
+                elif key.vk == 101:  # Num 5
+                    data[ki] = data[i]
+                elif key.vk == 102:  # Num 6
+                    data[kd] = data[d]
+                elif key.vk == 96:  # Num 0
+                    data[pidr] = True
+                print(data[kp], data[ki], data[kd], data[ks])
+                winsound.Beep(800, 200)
 
     with Listener(on_release=release, on_press=press) as k:
         k.join()
@@ -197,8 +207,8 @@ def loop(data):
         return targets[index]
 
     text = 'Realtime Screen Capture Detect'
-    # pidx = PID(2, 0, 0.02, setpoint=0)
-    queue = Queue(5)
+    pidx = PID(data[kp], data[ki], data[kd], setpoint=data[ks])
+    queue = Queue(4)
 
     # 主循环
     while True:
@@ -230,6 +240,15 @@ def loop(data):
                     y = sy - cy
                     ay = int(y * data[ads])
                     if data[pidc]:
+                        # 动态调整PID
+                        if data[pidr]:
+                            data[pidr] = False
+                            pidx = PID(data[kp], data[ki], data[kd], setpoint=data[ks])
+                        pidx.Kp = data[kp]
+                        pidx.Ki = data[ki]
+                        pidx.Kd = data[kd]
+                        pidx.setpoint = data[ks]
+                        # 通过pid计算位移
                         px = -int(pidx(x))
                         # 通过x推测目标运动方向, 进而修改pid.setpoint预瞄点
                         if queue.full():
@@ -240,19 +259,20 @@ def loop(data):
                         positiveCounter = 0
                         negativeCounter = 0
                         for i in lst:
-                            if i > 0:
+                            if i > 10:
                                 positiveCounter += 1
-                            elif i < 0:
+                            elif i < -10:
                                 negativeCounter += 1
-                        if positiveCounter == queue.qsize():
-                            print('>>')
-                            pidx.setpoint = -10
-                        elif negativeCounter == queue.qsize():
-                            print('<<')
-                            pidx.setpoint = 10
-                        else:
-                            print('--')
-                            pidx.setpoint = 0
+                        # if positiveCounter == queue.qsize():
+                        #     print('>>')
+                        #     pidx.setpoint = -data[ks]
+                        # elif negativeCounter == queue.qsize():
+                        #     print('<<')
+                        #     pidx.setpoint = data[ks]
+                        # else:
+                        #     print('--')
+                        #     pidx.setpoint = 0
+                        # 移动鼠标
                         move(px, ay)
                     else:
                         ax = int(x * data[ads])
