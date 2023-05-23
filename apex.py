@@ -216,7 +216,7 @@ def loop(data, queue):
         return targets[index]
 
     pidx = PID(data[kp], data[ki], data[kd], setpoint=0)
-    direction = Queue(4)
+    direction = Queue(3)
 
     t = time.perf_counter_ns()
 
@@ -266,6 +266,7 @@ def loop(data, queue):
                         # 通过pid计算位移
                         px = -int(pidx(x))
                         # 通过x推测目标运动方向, 进而修改pid.setpoint预瞄点
+                        # 如果能准确识别目标的移动方向, 那就不需要用队列来大概推测了, 效果会获得显著提升
                         if direction.full():
                             direction.get()
                         direction.put(px)
