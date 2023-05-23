@@ -12,9 +12,10 @@ import winsound
 from simple_pid import PID
 from queue import Queue
 
-p = 'p'
-i = 'i'
-d = 'd'
+dp = 'dp'
+di = 'di'
+dd = 'dd'
+ds = 'ds'
 kp = 'kp'
 ki = 'ki'
 kd = 'kd'
@@ -42,7 +43,7 @@ init = {
     classes: 0,  # 要检测的标签的序号(标签序号从0开始), 多个时如右 [0, 1]
     confidence: 0.5,  # 置信度, 低于该值的认为是干扰
     size: 320,  # 截图的尺寸, 屏幕中心 size*size 大小
-    radius: 500,  # 瞄准生效半径, 目标瞄点出现在以准星为圆心该值为半径的圆的范围内时才会锁定目标
+    radius: 160,  # 瞄准生效半径, 目标瞄点出现在以准星为圆心该值为半径的圆的范围内时才会锁定目标
     ads: 1.4,  # 移动倍数, 调整方式: 瞄准目标旁边并按住 Shift 键, 当准星移动到目标点的过程, 稳定精准快速不振荡时, 就找到了合适的 ADS 值
     center: None,  # 屏幕中心点
     region: None,  # 截图范围
@@ -50,15 +51,16 @@ init = {
     lock: False,  # 锁定, Shift
     show: False,  # 显示, Down
     head: False,  # 瞄头, Up
-    left: False,  # 左键锁, Left, 按鼠标左键时锁, 默认按左键时不锁(因为扔雷时也会锁)
+    left: True,  # 左键锁, Left, 按鼠标左键时锁, 默认按左键时不锁(因为扔雷时也会锁)
     pidc: True,  # 是否启用 PID 控制, Right, 还未完善
-    p: 2,  # PID 的 默认 P
-    i: 0,  # PID 的 默认 I
-    d: 0,  # PID 的 默认 D
+    dp: 2,  # PID 的 默认 P
+    di: 0,  # PID 的 默认 I
+    dd: 0.02,  # PID 的 默认 D
+    ds: 10,  # PID 的 默认 setpoint 的绝对值, 具体值将是该值的正负值
     kp: 2,  # PID 的 P, 数字键789分别增加pid的值
     ki: 0,  # PID 的 I, 数字键456分别还原pid的值
-    kd: 0,  # PID 的 D, 数字键123分别减少pid的值
-    ks: 0,  # PID 的 setpoint
+    kd: 0.02,  # PID 的 D, 数字键123分别减少pid的值
+    ks: 10,  # PID 的 setpoint
     pidr: False,  # 是否重置 pidx, 数字键0
 }
 
@@ -108,6 +110,13 @@ def keyboard(data):
         elif key == Key.left:
             data[left] = not data[left]
             winsound.Beep(800 if data[left] else 400, 200)
+        elif key == Key.page_up:
+            data[ks] += 1
+            winsound.Beep(800, 200)
+        elif key == Key.page_down:
+            if data[ks] > 0:
+                data[ks] -= 1
+                winsound.Beep(800, 200)
         elif hasattr(key, 'vk'):
             if 96 <= key.vk <= 105:
                 if key.vk == 103:  # Num 7
@@ -123,11 +132,11 @@ def keyboard(data):
                 elif key.vk == 99:  # Num 3
                     data[kd] -= 0.001
                 elif key.vk == 100:  # Num 4
-                    data[kp] = data[p]
+                    data[kp] = data[dp]
                 elif key.vk == 101:  # Num 5
-                    data[ki] = data[i]
+                    data[ki] = data[di]
                 elif key.vk == 102:  # Num 6
-                    data[kd] = data[d]
+                    data[kd] = data[dd]
                 elif key.vk == 96:  # Num 0
                     data[pidr] = True
                 print(data[kp], data[ki], data[kd], data[ks])
@@ -137,7 +146,7 @@ def keyboard(data):
         k.join()
 
 
-def loop(data):
+def loop(data, queue):
 
     from toolkit import Capturer, Detector, Timer
     capturer = Capturer(data[title], data[region])
@@ -207,8 +216,8 @@ def loop(data):
         return targets[index]
 
     text = 'Realtime Screen Capture Detect'
-    pidx = PID(data[kp], data[ki], data[kd], setpoint=data[ks])
-    queue = Queue(4)
+    pidx = PID(data[kp], data[ki], data[kd], setpoint=0)
+    q = Queue(4)
 
     # 主循环
     while True:
@@ -243,47 +252,68 @@ def loop(data):
                         # 动态调整PID
                         if data[pidr]:
                             data[pidr] = False
-                            pidx = PID(data[kp], data[ki], data[kd], setpoint=data[ks])
-                        pidx.Kp = data[kp]
-                        pidx.Ki = data[ki]
-                        pidx.Kd = data[kd]
-                        pidx.setpoint = data[ks]
+                            data[kp] = data[dp]
+                            data[ki] = data[di]
+                            data[kd] = data[dd]
+                            data[ks] = data[ds]
+                            pidx = PID(data[kp], data[ki], data[kd], setpoint=0)
+                        else:
+                            pidx.Kp = data[kp]
+                            pidx.Ki = data[ki]
+                            pidx.Kd = data[kd]
                         # 通过pid计算位移
                         px = -int(pidx(x))
                         # 通过x推测目标运动方向, 进而修改pid.setpoint预瞄点
-                        if queue.full():
-                            queue.get()
-                        queue.put(px)
-                        lst = list(queue.queue)
-                        print(lst)
+                        if q.full():
+                            q.get()
+                        q.put(px)
+                        lst = list(q.queue)
                         positiveCounter = 0
                         negativeCounter = 0
                         for i in lst:
-                            if i > 10:
+                            if i > data[ks]:
                                 positiveCounter += 1
-                            elif i < -10:
+                            elif i < -data[ks]:
                                 negativeCounter += 1
-                        # if positiveCounter == queue.qsize():
-                        #     print('>>')
-                        #     pidx.setpoint = -data[ks]
-                        # elif negativeCounter == queue.qsize():
-                        #     print('<<')
-                        #     pidx.setpoint = data[ks]
-                        # else:
-                        #     print('--')
-                        #     pidx.setpoint = 0
+                        if positiveCounter == q.qsize():
+                            print('>>')
+                            pidx.setpoint = -data[ks]
+                        elif negativeCounter == q.qsize():
+                            print('<<')
+                            pidx.setpoint = data[ks]
+                        else:
+                            print('--')
+                            pidx.setpoint = 0
                         # 移动鼠标
                         move(px, ay)
                     else:
                         ax = int(x * data[ads])
                         move(ax, ay)
 
-            # 显示检测
-            if data[show] and img is not None:
+            # 显示检测,发送数据(发送耗时<1ms)
+            if data[show] and img and not queue.full():
+                queue.put((img, target, t1, t2, t3, round(pidx.Kp, 3), round(pidx.Ki, 3), round(pidx.Kd, 3), pidx.setpoint))
+
+        except:
+            pass
+
+
+def window(data, queue):
+    from toolkit import Timer
+    text = 'Realtime Screen Capture Detect'
+    while True:
+        try:
+            if data[stop]:
+                break
+            if data[show] and not queue.empty():
+                # 显示检测,接收数据(接收耗时+处理耗时>1ms)
+                img, target, t1, t2, t3, p, i, d, setpoint = queue.get()
                 # 记录耗时
-                cv2.putText(img, f'{Timer.cost(t3 - t1)}', (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.75, (255, 255, 255), 1)
-                cv2.putText(img, f'{Timer.cost(t2 - t1)}', (10, 50), cv2.FONT_HERSHEY_SIMPLEX, 0.75, (255, 255, 255), 1)
-                cv2.putText(img, f'{Timer.cost(t3 - t2)}', (10, 70), cv2.FONT_HERSHEY_SIMPLEX, 0.75, (255, 255, 255), 1)
+                cv2.putText(img, f'{Timer.cost(t2 - t1)}', (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.75, (255, 255, 255), 1)
+                cv2.putText(img, f'{Timer.cost(t3 - t2)}', (10, 50), cv2.FONT_HERSHEY_SIMPLEX, 0.75, (255, 255, 255), 1)
+                cv2.putText(img, f'{Timer.cost(t3 - t1)}', (10, 70), cv2.FONT_HERSHEY_SIMPLEX, 0.75, (255, 255, 255), 1)
+                # 记录PID
+                cv2.putText(img, f'{p} {i} {d}, {setpoint}', (10, data[size] - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.75, (255, 255, 255), 1)
                 # 瞄点划线
                 if target:
                     index, clazz, conf, sc, gc, sr, gr = target
@@ -297,7 +327,6 @@ def loop(data):
                 cv2.waitKey(1)
             if not data[show]:
                 cv2.destroyAllWindows()
-
         except:
             pass
 
@@ -307,6 +336,7 @@ if __name__ == '__main__':
     manager = multiprocessing.Manager()
     data = manager.dict()
     data.update(init)
+    queue = manager.Queue(10)
     # 初始化数据
     from toolkit import Monitor
     data[center] = Monitor.resolution.center()
@@ -315,10 +345,12 @@ if __name__ == '__main__':
     # 创建进程
     pm = Process(target=mouse, args=(data,), name='Mouse')
     pk = Process(target=keyboard, args=(data,), name='Keyboard')
-    pl = Process(target=loop, args=(data,), name='Loop')
+    pl = Process(target=loop, args=(data, queue,), name='Loop')
+    pw = Process(target=window, args=(data, queue,), name='window')
     # 启动进程
     pm.start()
     pk.start()
     pl.start()
+    pw.start()
     pk.join()  # 不写 join 的话, 使用 dict 的地方就会报错 conn = self._tls.connection, AttributeError: 'ForkAwareLocal' object has no attribute 'connection'
     pm.terminate()  # 鼠标进程无法主动监听到终止信号, 所以需强制结束

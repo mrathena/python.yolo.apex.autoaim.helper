@@ -142,13 +142,13 @@ class Timer:
         转换耗时, 输入纳秒间距, 转换为合适的单位
         """
         if interval < 1000:
-            return f'{interval}ns'
+            return f'{interval} ns'
         elif interval < 1_000_000:
-            return f'{round(interval / 1000, 3)}us'
+            return f'{round(interval / 1000, 3)} us'
         elif interval < 1_000_000_000:
-            return f'{round(interval / 1_000_000, 3)}ms'
+            return f'{round(interval / 1_000_000, 3)} ms'
         else:
-            return f'{round(interval / 1_000_000_000, 3)}s'
+            return f'{round(interval / 1_000_000_000, 3)} s'
 
 
 class Printer:
