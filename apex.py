@@ -51,7 +51,7 @@ init = {
     lock: False,  # 锁定, Shift
     show: False,  # 显示, Down
     head: False,  # 瞄头, Up
-    left: True,  # 左键锁, Left, 按鼠标左键时锁, 默认按左键时不锁(因为扔雷时也会锁)
+    left: False,  # 左键锁, Left, 按鼠标左键时锁, 默认按左键时不锁(因为扔雷时也会锁)
     pidc: True,  # 是否启用 PID 控制, Right, 还未完善
     dp: 2,  # PID 的 默认 P
     di: 0,  # PID 的 默认 I
@@ -216,7 +216,7 @@ def loop(data, queue):
         return targets[index]
 
     pidx = PID(data[kp], data[ki], data[kd], setpoint=0)
-    direction = Queue(3)
+    direction = Queue(5)
 
     t = time.perf_counter_ns()
 
@@ -318,9 +318,10 @@ def window(data, queue):
                 cv2.putText(img, f'{Timer.cost(t2 - t1)}', (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.75, (255, 255, 255), 1)
                 cv2.putText(img, f'{Timer.cost(t3 - t2)}', (10, 50), cv2.FONT_HERSHEY_SIMPLEX, 0.75, (255, 255, 255), 1)
                 cv2.putText(img, f'{Timer.cost(t3 - t1)}', (10, 70), cv2.FONT_HERSHEY_SIMPLEX, 0.75, (255, 255, 255), 1)
-                cv2.putText(img, f'FPS {round(1000 / (total / 1_000_000))}', (10, 100), cv2.FONT_HERSHEY_SIMPLEX, 0.75, (255, 255, 255), 1)
+                # 记录FPS
+                cv2.putText(img, f'FPS {round(1000 / (total / 1_000_000))}', (10, data[size] - 40), cv2.FONT_HERSHEY_SIMPLEX, 0.75, (255, 255, 255), 1)
                 # 记录PID
-                cv2.putText(img, f'{p} {i} {d}, {setpoint}', (10, data[size] - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.75, (255, 255, 255), 1)
+                cv2.putText(img, f'PID {p} {i} {d}, {setpoint}', (10, data[size] - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.75, (255, 255, 255), 1)
                 # 瞄点划线
                 if target:
                     index, clazz, conf, sc, gc, sr, gr = target
