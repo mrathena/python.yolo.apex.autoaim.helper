@@ -119,19 +119,27 @@ def SendInput(*inputs):  # 接收任意个参数, 将其打包成为元组形参
 class Keyboard:
 
     @staticmethod
-    def press(wScan):  # 十六进制键扫描码, 可通过该工具获得, https://github.com/Lateralus138/Key-ScanCode/releases/tag/1.9.30.18
+    def press(wVk):  # 十六进制虚拟键码, 范围在[1,254], 如果dwFlags指定了KEYEVENTF_UNICODE, 则wVk必须是0, https://learn.microsoft.com/en-us/windows/win32/inputdev/virtual-key-codes
+        return SendInput(Input(INPUT_KEYBOARD, Inner(ki=KeyboardInput(wVk, 0, 0, 0, None))))
+
+    @staticmethod
+    def release(wVk):
+        return SendInput(Input(INPUT_KEYBOARD, Inner(ki=KeyboardInput(wVk, 0, KEYEVENTF_KEYUP, 0, None))))
+
+    @staticmethod
+    def pressByScanCode(wScan):  # 十六进制键扫描码, 可通过该工具获得, https://github.com/Lateralus138/Key-ScanCode/releases/tag/1.9.30.18
         return SendInput(Input(INPUT_KEYBOARD, Inner(ki=KeyboardInput(0, wScan, KEYEVENTF_SCANCODE, 0, None))))
 
     @staticmethod
-    def release(wScan):
+    def releaseByScanCode(wScan):
         return SendInput(Input(INPUT_KEYBOARD, Inner(ki=KeyboardInput(0, wScan, KEYEVENTF_SCANCODE | KEYEVENTF_KEYUP, 0, None))))
 
     @staticmethod
-    def unicodePress(wScan):  # 十六进制Unicode编码, 比如 汉字 "一" 的十六进制UTF8编码为 0x4e00, 则可通过发送该编码直接输入汉字一
+    def pressByUnicode(wScan):  # 十六进制Unicode编码, 比如 汉字 "一" 的十六进制UTF8编码为 0x4e00, 则可通过发送该编码直接输入汉字一
         return SendInput(Input(INPUT_KEYBOARD, Inner(ki=KeyboardInput(0, wScan, KEYEVENTF_UNICODE, 0, None))))
 
     @staticmethod
-    def unicodeRelease(wScan):
+    def releaseByUnicode(wScan):
         return SendInput(Input(INPUT_KEYBOARD, Inner(ki=KeyboardInput(0, wScan, KEYEVENTF_UNICODE | KEYEVENTF_KEYUP, 0, None))))
 
 
@@ -220,5 +228,6 @@ class Mouse:
 
 
 if __name__ == '__main__':
-    print(Keyboard.press(0x1e))
-    print(Keyboard.press(0x11))
+    print(Keyboard.press(0x51))
+    print(Keyboard.pressByScanCode(0x1e))
+    print(Keyboard.pressByUnicode(0x4e00))
