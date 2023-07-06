@@ -43,7 +43,7 @@ init = {
     classes: 0,  # 要检测的标签的序号(标签序号从0开始), 要检测的标签有多个时参数形式如右 [0, 1]
     confidence: 0.5,  # 置信度, 低于该值的认为是干扰
     size: 320,  # 截图的尺寸, 屏幕中心 size*size 大小
-    radius: 160,  # 瞄准生效半径, 目标瞄点出现在以准星为圆心该值为半径的圆的范围内时才会锁定目标
+    radius: 128,  # 瞄准生效半径, 目标瞄点出现在以准星为圆心该值为半径的圆的范围内时才会锁定目标
     ads: 1.4,  # 移动倍数, 调整方式: 瞄准目标旁边并按住 Shift 键, 当准星移动到目标点的过程, 稳定精准快速不振荡时, 就找到了合适的 ADS 值
     center: None,  # 屏幕中心点
     region: None,  # 截图范围
@@ -217,7 +217,7 @@ def loop(data, queue):
                     minimum = distance
         return targets[index]
 
-    pidx = PID(data[kp], data[ki], data[kd], setpoint=0)
+    pidx = PID(data[kp], data[ki], data[kd], setpoint=-10)
     direction = Queue(5)
 
     t = time.perf_counter_ns()
@@ -281,13 +281,13 @@ def loop(data, queue):
                             elif i < -10:
                                 negative += 1
                         if positive == direction.qsize():
-                            # print('>>')
+                            # pass
                             pidx.setpoint = -data[ks]
                         elif negative == direction.qsize():
-                            # print('<<')
+                            # pass
                             pidx.setpoint = data[ks]
                         else:
-                            # print('--')
+                            # pass
                             pidx.setpoint = 0
                         # 移动鼠标
                         move(px, ay)
