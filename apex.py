@@ -35,33 +35,34 @@ center = 'center'
 radius = 'radius'
 weights = 'weights'
 classes = 'classes'
+setpoint = 'setpoint'
 confidence = 'confidence'
 
 init = {
     title: 'Apex Legends',  # 可在后台运行 print(GetWindowText(GetForegroundWindow())) 来检测前台游戏窗体标题
     weights: 'weights.apex.private.crony.1435244588.1127E7B7107206013DE38A10EDDEEEB3-v5-n-416-50000-3-0.1.2.engine',
     classes: 0,  # 要检测的标签的序号(标签序号从0开始), 要检测的标签有多个时参数形式如右 [0, 1]
-    confidence: 0.5,  # 置信度, 低于该值的认为是干扰
+    confidence: 0.6,  # 置信度, 低于该值的认为是干扰
     size: 320,  # 截图的尺寸, 屏幕中心 size*size 大小
     radius: 128,  # 瞄准生效半径, 目标瞄点出现在以准星为圆心该值为半径的圆的范围内时才会锁定目标
     ads: 1.4,  # 移动倍数, 调整方式: 瞄准目标旁边并按住 Shift 键, 当准星移动到目标点的过程, 稳定精准快速不振荡时, 就找到了合适的 ADS 值
     center: None,  # 屏幕中心点
     region: None,  # 截图范围
-    stop: False,  # 退出, End
-    lock: False,  # 锁定, Shift, 开启左建锁后, Shift 不再锁
-    show: False,  # 显示, Down
-    head: False,  # 瞄头, Up
-    left: False,  # 左键锁, Left, 按鼠标左键时锁, 默认按左键时不锁(因为扔雷时也会锁)
-    pidc: True,  # 是否启用 PID 控制, Right, 还未完善
-    dp: 2,  # PID 的 默认 P
+    stop: False,  # End, 退出程序
+    lock: False,  # Shift, 按下该键时自瞄, 开启鼠标左建锁后该键失效
+    show: False,  # Down, 显示推理窗体
+    head: False,  # Up, 是否启用瞄头, 默认瞄身体
+    left: False,  # Left, 鼠标左键按下时自瞄, 默认按左键时不锁(因为扔雷时也会锁)
+    pidc: True,  # Right, 启用 PID 控制, 还未完善
+    dp: 1,  # PID 的 默认 P
     di: 0,  # PID 的 默认 I
-    dd: 0.02,  # PID 的 默认 D
-    ds: 10,  # PID 的 默认 setpoint 的绝对值, 具体值将是该值的正负值
-    kp: 2,  # PID 的 P, 数字键789分别增加pid的值
+    dd: 0,  # PID 的 默认 D
+    kp: 1,  # PID 的 P, 数字键789分别增加pid的值
     ki: 0,  # PID 的 I, 数字键456分别还原pid的值
-    kd: 0.02,  # PID 的 D, 数字键123分别减少pid的值
-    ks: 10,  # PID 的 setpoint
-    pidr: False,  # 是否重置 pidx, 数字键0
+    kd: 0,  # PID 的 D, 数字键123分别减少pid的值
+    ks: 0,  # 预瞄提前量, PageUp/PageDown 调整
+    setpoint: 10,  # PID 的 默认 setpoint 的绝对值, 具体值将是该值的正负值
+    pidr: False,  # 重置 pidx 为默认的值, 数字键0
 }
 
 def game():
@@ -113,11 +114,11 @@ def keyboard(data):
             data[left] = not data[left]
             winsound.Beep(800 if data[left] else 400, 200)
         elif key == Key.page_up:
-            data[ks] += 1
+            data[setpoint] += 5
             winsound.Beep(800, 200)
         elif key == Key.page_down:
-            if data[ks] > 0:
-                data[ks] -= 1
+            if data[setpoint] > 0:
+                data[setpoint] -= 5
                 winsound.Beep(800, 200)
         elif hasattr(key, 'vk'):
             if 96 <= key.vk <= 105:
@@ -141,7 +142,7 @@ def keyboard(data):
                     data[kd] = data[dd]
                 elif key.vk == 96:  # Num 0
                     data[pidr] = True
-                print(data[kp], data[ki], data[kd], data[ks])
+                print(f'P:{data[kp]} I:{data[ki]}, D:{data[kd]} SetPoint:{data[ks]}')
                 winsound.Beep(800, 200)
 
     with Listener(on_release=release, on_press=press) as k:
@@ -217,8 +218,7 @@ def loop(data, queue):
                     minimum = distance
         return targets[index]
 
-    pidx = PID(data[kp], data[ki], data[kd], setpoint=-10)
-    direction = Queue(5)
+    direction = Queue(7)
 
     t = time.perf_counter_ns()
 
@@ -251,53 +251,54 @@ def loop(data, queue):
                     x = sx - cx
                     y = sy - cy
                     ay = int(y * data[ads])
-                    if data[pidc]:
-                        # 动态调整PID
+                    if not data[pidc]:
+                        # 非 PID 控制
+                        ax = int(x * data[ads])
+                        move(ax, ay)
+                    else:
+                        # 是 PID 控制
+                        # PID 更新
                         if data[pidr]:
                             data[pidr] = False
                             data[kp] = data[dp]
                             data[ki] = data[di]
                             data[kd] = data[dd]
-                            data[ks] = data[ds]
-                            pidx = PID(data[kp], data[ki], data[kd], setpoint=0)
-                        else:
-                            pidx.Kp = data[kp]
-                            pidx.Ki = data[ki]
-                            pidx.Kd = data[kd]
-                            # pidx.setpoint = data[ks]
+                        pidx = PID(data[kp], data[ki], data[kd], setpoint=data[ks])
+
                         # 通过pid计算位移
                         px = -int(pidx(x))
-                        # 通过x推测目标运动方向, 进而修改pid.setpoint预瞄点
-                        # 如果能准确识别目标的移动方向, 那就不需要用队列来大概推测了, 效果会获得显著提升
+
+                        # 通过px推测目标运动方向
                         if direction.full():
                             direction.get()
                         direction.put(px)
                         lst = list(direction.queue)
+                        qsize = direction.qsize()
                         positive = 0  # 向右计数器
                         negative = 0  # 向左计数器
                         for i in lst:
-                            if i > 10:
+                            if i > 0:
                                 positive += 1
-                            elif i < -10:
+                            elif i < 0:
                                 negative += 1
-                        if positive == direction.qsize():
-                            # pass
-                            pidx.setpoint = -data[ks]
-                        elif negative == direction.qsize():
-                            # pass
-                            pidx.setpoint = data[ks]
+
+                        avg = abs(sum(lst) // qsize)
+                        if positive != qsize and negative != qsize and avg <= 5:
+                            data[ks] = 0
                         else:
-                            # pass
-                            pidx.setpoint = 0
+                            # 首次左右移动切换时设置 setpoint
+                            if positive == qsize and avg > 5 and data[ks] != -data[setpoint]:
+                                data[ks] = -data[setpoint]
+                            elif negative == qsize and avg > 5 and data[ks] != data[setpoint]:
+                                data[ks] = data[setpoint]
+
+                        print(px, data[ks])
                         # 移动鼠标
                         move(px, ay)
-                    else:
-                        ax = int(x * data[ads])
-                        move(ax, ay)
 
             # 显示检测,发送数据(发送耗时<1ms)
             if data[show] and img is not None and not queue.full():
-                queue.put((img, target, t1, t2, t3, time.perf_counter_ns() - t, round(pidx.Kp, 3), round(pidx.Ki, 3), round(pidx.Kd, 3), pidx.setpoint))
+                queue.put((img, target, t1, t2, t3, time.perf_counter_ns() - t, round(data[kp], 3), round(data[ki], 3), round(data[kd], 3), data[ks]))
 
             # 计时
             t = time.perf_counter_ns()
