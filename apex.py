@@ -292,7 +292,6 @@ def loop(data, queue):
                             elif negative == qsize and avg > 5 and data[ks] != data[setpoint]:
                                 data[ks] = data[setpoint]
 
-                        print(px, data[ks])
                         # 移动鼠标
                         move(px, ay)
 
