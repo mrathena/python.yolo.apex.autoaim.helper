@@ -106,7 +106,6 @@ def convert(final_aims,region):
 
     try:
         lst = []
-
         for cls,name, conf, boxes_xywh in final_aims:
             print(final_aims)
             print("================================")
