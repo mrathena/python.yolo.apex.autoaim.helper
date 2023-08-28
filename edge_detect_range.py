@@ -6,7 +6,7 @@ from win32con import HWND_TOPMOST, SWP_NOMOVE, SWP_NOSIZE
 from PIL import Image
 import pytesseract
 from find import find
-from UI import init
+
 from key_input.press_key import InputKey
 from key_input import Mouse, Keyboard
 input_key = InputKey(0)
@@ -18,6 +18,14 @@ size = 'size'
 size_point = 'size_point'
 speed_w = 'speed_w'
 
+init = {
+    center_point: (644, 377),  # 中心点
+    ranging_speed: 0.025,  # 装表速度
+    show: True,  # 显示
+    size: 250 // 2,  # 截图的尺寸, 屏幕中心截图周围大小      检测紫色点
+    size_point: 450 // 2,  # 截图的尺寸, 屏幕中心截图周围大小      检测紫色边缘
+    speed_w: (31, 721, 61, 735)  # 速度的屏幕坐标(左上角x,左上角y，右下角x,右下角y)
+}
 
 
 def ocr_digit(image_path):
