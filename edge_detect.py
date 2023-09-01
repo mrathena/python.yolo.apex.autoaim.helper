@@ -1,74 +1,109 @@
 from detect import *
 import time
 import cv2
-import ctypes
-import keyboard
 from win32gui import FindWindow, SetWindowPos
 from win32con import HWND_TOPMOST, SWP_NOMOVE, SWP_NOSIZE
+from PIL import Image
+import pytesseract
+from find import find
 
+from key_input.press_key import InputKey
+from key_input import Mouse, Keyboard
+input_key = InputKey(0)
 
-
-
+center_point = 'center_point'
 show = 'show'
 size = 'size'
+
+
 init = {
-    show: True,  # 显示, Down
-    size: 200,  # 截图的尺寸, 屏幕中心截图周围大小hhhhhhhhhh
+    center_point: (960, 540),  # 中心点
+    show: True,  # 显示
+    size: 250,  # 截图的尺寸, 屏幕中心截图周围大小      检测紫色点
+
+
 }
 
 
-c = cx_cy()
+def ocr_digit(image_path):
+    # 打开图像
+    image = Image.open(image_path)
 
-text = 'Realtime Screen Capture Detect'
-try:
-    import os
+    # 使用Tesseract进行OCR识别
+    text = pytesseract.image_to_string(image, config='--psm 10 --oem 3 -c itemised_char_whitelist=0123456789')
 
-    root = os.path.abspath(os.path.dirname(__file__))
-    driver = ctypes.CDLL(f'{root}/logitech.driver.dll')
-    ok = driver.device_open() == 1
-    if not ok:
-        print('初始化失败, 未安装罗技驱动')
-except FileNotFoundError:
-    print('初始化失败, 缺少文件')
+    # 返回识别的数字文本
+    return text.strip()
 
 
-def move(x: int, y: int):
+def move(x: int, y: int):  # 不开镜模式下鼠标移动
     if (x == 0) & (y == 0):
         return
+
     screen_width, screen_height = pyautogui.size()
+
+    # 计算屏幕中心点的坐标
     center_x = screen_width // 2
     center_y = screen_height // 2
+
+    print(center_x, center_y)
 
     # 计算屏幕中心到目标点的相对位移
     x_offset = x - center_x
     y_offset = y - center_y
-    driver.moveR(x_offset, y_offset, True)
-def loop():
+    print(int(x_offset), int(y_offset))
+    input_key.mouse_move(x_offset, y_offset)
+
+
+
+
+import keyboard
+def loop():  # 主函数
     while True:
 
-        t1 = time.perf_counter_ns()
-        img = capture_screen_around_center(init[size]) # 如果句柄截图是黑色, 不能正常使用, 可以使用本行的截图方法
-        t2 = time.perf_counter_ns()
-        target , image= find_specific_purple_edges('detect.jpg' ,show = init[show])
-        x, y = target
-        t3 = time.perf_counter_ns()
-        aim = get_coordinate(init[size], x, y)    #转换屏幕坐标
-        print(aim)
-        if aim:
-           x = aim[0]
-           y = aim[1]
-           move(x,y)
+        # 检测是否按下 "h" 键
         if keyboard.is_pressed('h'):
-            print("按下了'h'键，退出函数执行")
+            print("退出")
             break
-        # 瞄点划线
-        if aim:
-            cv2.line(image, aim, (c[0], c[1]), (255, 255, 0), 2)
-        # 展示图片
-        cv2.namedWindow(text, cv2.WINDOW_AUTOSIZE)
-        cv2.imshow(text, image)
-        SetWindowPos(FindWindow(None, text), HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE)
-        cv2.waitKey(1)
+        capture_screen_around_center(init[size])  # 截图
+        b = cv2.imread('detect.png')
+        target, image1 = find_specific_purple_edges('detect.png', show=init[show])  # 调用边缘检测求中心点
+        if target is not None:
+            x1, y1 = target
+            aim = get_coordinate(init[size], x1, y1)  # 转为屏幕坐标
+            px2 = aim[0]
+            py2 = aim[1]
+            time.sleep(0.5)
+            print(px2, py2)
+            move(px2, py2)  # 移动
+            input_key.mouse_key_click(Mouse.MOUSE_LEFT)  # 开火
+            print("开火")
 
-if __name__ == "__main__":
+        # 显示
+
+        if init[show]:
+            cv2.namedWindow('detect', cv2.WINDOW_AUTOSIZE)
+            im = cv2.resize(image1, (400, 400))
+            cv2.imshow('detect', im)
+            SetWindowPos(FindWindow(None, 'detect'), HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE)
+            cv2.waitKey(1)
+
+        else:
+            # 显示
+            if init[show]:
+                resized_img = cv2.resize(b, (400, 400))
+                cv2.imshow('detect', resized_img)
+                SetWindowPos(FindWindow(None, 'detect'), HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE)
+                cv2.waitKey(1)
+            else:
+                # 显示
+                print("未能找到目标")
+                if init[show]:
+                    img = cv2.resize(b, (400, 400))
+                    cv2.imshow('detect', img)
+                    SetWindowPos(FindWindow(None, 'detect'), HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE)
+                    cv2.waitKey(1)
+
+
+if __name__ == '__main__':
     loop()
