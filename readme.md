@@ -2,10 +2,14 @@
 # 说明
 ![1](https://github.com/GrayTempest-400/python.yolo.apex.autoaim.helper/assets/101955396/d4ff9656-61a8-4538-b2d9-21226f04b218)
 ![image](https://github.com/GrayTempest-400/python.yolo.apex.autoaim.helper/assets/101955396/39726071-f866-48b6-9a02-b30063d81a25)
+![1](https://github.com/GrayTempest-400/python.yolo.apex.autoaim.helper/assets/101955396/5cf0d603-75af-4c76-9f7e-8b25d5ce2aef)
 
 这是边缘检测的逻辑
-边缘检测检测范围不宜调太大，不然肯能把两个或多个个物体当成同一个物体
+![2](https://github.com/GrayTempest-400/python.yolo.apex.autoaim.helper/assets/101955396/47da059a-db74-4168-890c-a50659be527e)
 
+![3](https://github.com/GrayTempest-400/python.yolo.apex.autoaim.helper/assets/101955396/4d2403ba-b65e-4601-b295-93f171e0ced5)
+边缘检测检测范围不宜调太大，不然可能把两个或多个个物体当成同一个物体
+yolov8检测
 
 因为没有计算机视觉相关方向的专业知识, 所以做出来的东西, 有一定效果, 但是还有很多不足, 目前仍在调优
 
