@@ -1,7 +1,15 @@
 
 # 说明
+![1](https://github.com/GrayTempest-400/python.yolo.apex.autoaim.helper/assets/101955396/d4ff9656-61a8-4538-b2d9-21226f04b218)
+![image](https://github.com/GrayTempest-400/python.yolo.apex.autoaim.helper/assets/101955396/39726071-f866-48b6-9a02-b30063d81a25)
+![1](https://github.com/GrayTempest-400/python.yolo.apex.autoaim.helper/assets/101955396/5cf0d603-75af-4c76-9f7e-8b25d5ce2aef)
 
-> [CSDN Python Apex YOLO V5 6.2 目标检测与自瞄 全过程记录](https://blog.csdn.net/mrathena/article/details/126860226)
+这是边缘检测的逻辑
+![2](https://github.com/GrayTempest-400/python.yolo.apex.autoaim.helper/assets/101955396/47da059a-db74-4168-890c-a50659be527e)
+
+![3](https://github.com/GrayTempest-400/python.yolo.apex.autoaim.helper/assets/101955396/4d2403ba-b65e-4601-b295-93f171e0ced5)
+边缘检测检测范围不宜调太大，不然可能把两个或多个个物体当成同一个物体
+yolov8检测
 
 因为没有计算机视觉相关方向的专业知识, 所以做出来的东西, 有一定效果, 但是还有很多不足, 目前仍在调优
 
@@ -14,6 +22,7 @@
 - test.*.py: 测试一些东西
 - detect.realtime.py: 实时展示推理结果, 用于测试权重文件是否好用, 可通过播放Apex集锦来测试
 - export.pt: 导出工具, 将 .pt 导出为 .engine 等
+- edge-detect 边缘检测，可自定义中心点，本程序使用的是(644, 377)为中心点
 
 参数说明: apex.py 中的 init
 - ads: 就是一个作用于鼠标移动距离的倍数, 用于调整移动鼠标时的实际像素和鼠标 eDPI 的关系. 
